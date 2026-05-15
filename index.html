@@ -1614,8 +1614,11 @@ function showResetPage(){
       window.history.replaceState({},document.title,window.location.pathname);
       return;
     }
-    if(event==='SIGNED_IN'&&!currentUser&&session){
-      // Vérifier si c'est une première connexion via invitation
+    if(event==='SIGNED_IN'&&session){
+      // Ne rien faire si l'app est déjà en cours d'initialisation ou initialisée
+      if(appInitializing||appInitialized) return;
+      // Ne rien faire si on a déjà un user courant
+      if(currentUser) return;
       var meta=session.user.user_metadata||{};
       if(meta.invited_at&&!meta.password_set){
         currentUser=session.user;
