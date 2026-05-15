@@ -712,25 +712,23 @@ async function doSignup(){
   var nom=document.getElementById('su-nom').value.trim();
   var email=document.getElementById('su-email').value.trim();
   var password=document.getElementById('su-password').value;
-  var dob=document.getElementById('su-dob').value;
-  var poids=document.getElementById('su-poids').value;
-  var taille=document.getElementById('su-taille').value;
-  var niveau=document.getElementById('su-niveau').value;
-  var discipline=document.getElementById('su-discipline').value;
   if(!prenom||!nom||!email||!password){showAlert('signup-alert','Prénom, nom, email et mot de passe sont obligatoires.','error');return;}
   if(password.length<6){showAlert('signup-alert','Mot de passe : 6 caractères minimum.','error');return;}
   var btn=document.getElementById('signup-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Création...';
   var {data,error}=await sb.auth.signUp({
     email,password,
-    options:{data:{prenom,nom,role:'athlete',dob,poids,taille,niveau,discipline}}
+    options:{data:{prenom,nom,role:'athlete'}}
   });
   btn.disabled=false;btn.innerHTML='→ Créer mon compte';
   if(error){showAlert('signup-alert',error.message,'error');return;}
-  showAlert('signup-alert','Compte créé ! Vérifiez votre email pour confirmer votre inscription.','success',0);
-  ['su-prenom','su-nom','su-email','su-password','su-dob','su-poids','su-taille'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('su-niveau').value='';
-  document.getElementById('su-discipline').value='';
+  // Connecter directement après inscription
+  if(data&&data.user){
+    appInitialized=false;appInitializing=false;
+    await initApp(data.user);
+  } else {
+    showAlert('signup-alert','Compte créé ! Connectez-vous.','success',0);
+  }
 }
 
 async function doResetPassword(){
