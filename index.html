@@ -823,10 +823,6 @@ async function initApp(user){
             +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Poids kg</label><input type="number" id="ob-poids" placeholder="72" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"></div>'
             +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Taille cm</label><input type="number" id="ob-taille" placeholder="180" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"></div>'
           +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Niveau</label><select id="ob-niveau" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"><option value="">— Choisir —</option><option>Débutant</option><option>Intermédiaire</option><option>Confirmé</option><option>Élite</option></select></div>'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Discipline</label><select id="ob-discipline" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"><option value="">— Choisir —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>'
-          +'</div>'
           +'<div style="margin-bottom:16px"><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Objectif de la saison</label><textarea id="ob-objectif" placeholder="Ex : Championnats régionaux..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;min-height:68px;resize:vertical;box-sizing:border-box"></textarea></div>'
           +'<div id="ob-alert" style="display:none;padding:10px 14px;background:#F9ECEC;color:#9E0C0C;border-radius:6px;margin-bottom:12px;font-size:13px;border-left:3px solid #CC1111"></div>'
           +'<button onclick="saveOnboarding()" style="width:100%;background:#CC1111;color:#fff;border:none;border-radius:6px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.2px">→ Accéder à l\'application</button>'
@@ -1520,15 +1516,19 @@ function renderTable(sc){
 
 /* ── ONBOARDING ATHLÈTE ── */
 async function saveOnboarding(){
-  var btn=document.getElementById('ob-btn')||document.querySelector('#ob-overlay button');
+  var btn=document.querySelector('#ob-overlay button');
   if(btn){btn.disabled=true;btn.innerHTML='Enregistrement...';}
+  var dob=document.getElementById('ob-dob').value||null;
+  var poids=document.getElementById('ob-poids').value?parseFloat(document.getElementById('ob-poids').value):null;
+  var taille=document.getElementById('ob-taille').value?parseFloat(document.getElementById('ob-taille').value):null;
+  var objectif=document.getElementById('ob-objectif').value.trim()||null;
   var {error}=await sb.rpc('update_athlete_fiche',{
-    p_dob:document.getElementById('ob-dob').value||null,
-    p_poids:document.getElementById('ob-poids').value?parseFloat(document.getElementById('ob-poids').value):null,
-    p_taille:document.getElementById('ob-taille').value?parseFloat(document.getElementById('ob-taille').value):null,
-    p_niveau:document.getElementById('ob-niveau').value||null,
-    p_discipline:document.getElementById('ob-discipline').value||null,
-    p_objectif:document.getElementById('ob-objectif').value.trim()||null
+    p_dob:dob,
+    p_poids:poids,
+    p_taille:taille,
+    p_niveau:'Complété',  // marqueur pour ne plus afficher l'onboarding
+    p_discipline:null,
+    p_objectif:objectif
   });
   if(btn){btn.disabled=false;btn.innerHTML='→ Accéder à l\'application';}
   if(error){
