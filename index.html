@@ -1488,6 +1488,11 @@ async function saveOnboarding(){
 }
 
 async function skipOnboarding(){
+  // Marquer la fiche avec une valeur par défaut pour ne plus afficher l'onboarding
+  await sb.rpc('update_athlete_fiche',{
+    p_niveau:'Non renseigné',
+    p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
+  });
   var ov=document.getElementById('ob-overlay');
   if(ov) ov.remove();
   await finishInit();
