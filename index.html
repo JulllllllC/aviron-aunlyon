@@ -351,23 +351,10 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
         <div class="field"><label>Nom *</label><input type="text" id="su-nom" placeholder="Dupont"></div>
       </div>
       <div class="field" style="margin-bottom:12px"><label>Email *</label><input type="email" id="su-email" placeholder="votre@email.com"></div>
-      <div class="field" style="margin-bottom:12px"><label>Mot de passe *</label><input type="password" id="su-password" placeholder="Minimum 6 caractères"></div>
-      <div class="fg g2">
-        <div class="field"><label>Date de naissance</label><input type="date" id="su-dob"></div>
-        <div class="field"><label>Poids (kg)</label><input type="number" id="su-poids" placeholder="72"></div>
-      </div>
-      <div class="fg g2">
-        <div class="field"><label>Taille (cm)</label><input type="number" id="su-taille" placeholder="180"></div>
-        <div class="field"><label>Niveau</label>
-          <select id="su-niveau"><option value="">— Choisir —</option><option>Débutant</option><option>Intermédiaire</option><option>Confirmé</option><option>Élite</option></select>
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:16px"><label>Discipline principale</label>
-        <select id="su-discipline"><option value="">— Choisir —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Huit (8+)</option><option>Ergomètre</option></select>
-      </div>
+      <div class="field" style="margin-bottom:16px"><label>Mot de passe *</label><input type="password" id="su-password" placeholder="Minimum 6 caractères"></div>
       <div id="signup-alert" class="alert"></div>
       <button class="btn primary full" id="signup-btn" onclick="doSignup()">→ Créer mon compte</button>
-      <div class="txs" style="margin-top:10px;text-align:center;line-height:1.5">Votre fiche athlète sera créée automatiquement.</div>
+      <div class="txs" style="margin-top:10px;text-align:center;line-height:1.5">Votre fiche athlète sera complétée à la première connexion.</div>
     </div>
   </div>
 </div>
@@ -481,6 +468,23 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
 <!-- ATHLÈTE -->
 <div id="tab-athlete" class="sec">
   <div id="ath-profile-card"></div>
+
+  <!-- Formulaire modification profil -->
+  <div id="ath-edit-form" style="display:none" class="card form" style="margin-bottom:1.5rem">
+    <div class="form-section-title"><span>Modifier mon profil</span><button class="btn sm" style="border:none;background:none;color:var(--gris2)" onclick="closeAthEdit()">✕</button></div>
+    <div class="fg g3">
+      <div class="field"><label>Date de naissance</label><input type="date" id="ae-dob"></div>
+      <div class="field"><label>Poids (kg)</label><input type="number" id="ae-poids" placeholder="72"></div>
+      <div class="field"><label>Taille (cm)</label><input type="number" id="ae-taille" placeholder="180"></div>
+    </div>
+    <div class="fg g2">
+      <div class="field"><label>Niveau</label><select id="ae-niveau"><option value="">— Choisir —</option><option>Débutant</option><option>Intermédiaire</option><option>Confirmé</option><option>Élite</option></select></div>
+      <div class="field"><label>Discipline</label><select id="ae-discipline"><option value="">— Choisir —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>
+    </div>
+    <div class="field" style="margin-bottom:14px"><label>Objectif de la saison</label><textarea id="ae-objectif" placeholder="Ex : Championnats régionaux..."></textarea></div>
+    <div id="ae-alert" class="alert"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeAthEdit()">Annuler</button><button class="btn primary sm" id="ae-btn" onclick="saveAthEdit()">✓ Enregistrer</button></div>
+  </div>
   <div class="stitle">Saisir une séance</div>
   <div class="card">
     <div class="fg g2"><div class="field"><label>Date *</label><input type="date" id="s-date"></div><div class="field"><label>Type</label><select id="s-type"></select></div></div>
@@ -794,7 +798,8 @@ async function initApp(user){
       alert('Erreur lecture fiche: '+ficheSelectErr.message);
     }
     // Afficher l'onboarding si pas de niveau ET pas de discipline ET pas déjà montré
-    if(!onboardingShown&&(!fiche||(!fiche.niveau&&!fiche.discipline))){
+    var obKey='ob_done_'+user.id;
+    if(!localStorage.getItem(obKey)&&(!fiche||(!fiche.niveau&&!fiche.discipline))){
       onboardingShown=true;
       // Cacher toutes les autres pages
       document.getElementById('login-page').style.cssText='display:none!important';
@@ -1118,8 +1123,52 @@ function renderAthleteView(){
   var a=athletes[0];
   if(!a){document.getElementById('ath-profile-card').innerHTML='<div class="card"><div class="tsm">Aucune fiche liée à votre compte. Contactez votre coach.</div></div>';document.getElementById('seances-history').innerHTML='';return;}
   var sc=seances[a.id]||[];
-  document.getElementById('ath-profile-card').innerHTML='<div class="card accent" style="margin-bottom:1.5rem"><div class="row btwn wrap" style="gap:8px"><div class="row" style="gap:12px"><div class="avatar lg">'+inits(a.prenom,a.nom)+'</div><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:20px">'+esc(a.prenom)+' '+esc(a.nom)+'</div><div class="sep-rouge" style="width:24px;margin:4px 0 6px"></div><div>'+(a.niveau?'<span class="tag rouge">'+esc(a.niveau)+'</span>':'')+(a.discipline?'<span class="tag gray">'+esc(a.discipline)+'</span>':'')+'</div></div></div><div class="sbox" style="min-width:70px"><div class="sval">'+sc.length+'</div><div class="slbl">séances</div></div></div>'+(a.objectif?'<div class="sep"></div><div class="tsm">Objectif : <strong>'+esc(a.objectif)+'</strong></div>':'')+'</div>';
+  document.getElementById('ath-profile-card').innerHTML='<div class="card accent" style="margin-bottom:1rem"><div class="row btwn wrap" style="gap:8px"><div class="row" style="gap:12px"><div class="avatar lg">'+inits(a.prenom,a.nom)+'</div><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:20px">'+esc(a.prenom)+' '+esc(a.nom)+'</div><div class="sep-rouge" style="width:24px;margin:4px 0 6px"></div><div>'+(a.niveau?'<span class="tag rouge">'+esc(a.niveau)+'</span>':'')+(a.discipline?'<span class="tag gray">'+esc(a.discipline)+'</span>':'')+(a.poids?'<span class="tag gray">'+a.poids+' kg</span>':'')+(a.taille?'<span class="tag gray">'+a.taille+' cm</span>':'')+'</div></div></div><div class="row" style="gap:8px;align-items:flex-start"><div class="sbox" style="min-width:70px"><div class="sval">'+sc.length+'</div><div class="slbl">séances</div></div><button class="btn sm" onclick="openAthEdit()">✏ Modifier</button></div></div>'+(a.objectif?'<div class="sep"></div><div class="tsm">Objectif : <strong>'+esc(a.objectif)+'</strong></div>':'')+'</div>';
   renderHistory(a.id);
+}
+
+function openAthEdit(){
+  var a=athletes[0];if(!a)return;
+  document.getElementById('ae-dob').value=a.dob?a.dob.split('T')[0]:'';
+  document.getElementById('ae-poids').value=a.poids||'';
+  document.getElementById('ae-taille').value=a.taille||'';
+  document.getElementById('ae-niveau').value=a.niveau||'';
+  document.getElementById('ae-discipline').value=a.discipline||'';
+  document.getElementById('ae-objectif').value=a.objectif||'';
+  document.getElementById('ath-edit-form').style.display='block';
+  document.getElementById('ath-edit-form').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function closeAthEdit(){
+  document.getElementById('ath-edit-form').style.display='none';
+}
+
+async function saveAthEdit(){
+  var btn=document.getElementById('ae-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner dark"></span>';
+  var {error}=await sb.rpc('update_athlete_fiche',{
+    p_dob:document.getElementById('ae-dob').value||null,
+    p_poids:document.getElementById('ae-poids').value?parseFloat(document.getElementById('ae-poids').value):null,
+    p_taille:document.getElementById('ae-taille').value?parseFloat(document.getElementById('ae-taille').value):null,
+    p_niveau:document.getElementById('ae-niveau').value||null,
+    p_discipline:document.getElementById('ae-discipline').value||null,
+    p_objectif:document.getElementById('ae-objectif').value.trim()||null
+  });
+  btn.disabled=false;btn.innerHTML='✓ Enregistrer';
+  if(error){showAlert('ae-alert',error.message,'error');return;}
+  // Mettre à jour localement
+  var a=athletes[0];
+  if(a){
+    a.dob=document.getElementById('ae-dob').value||null;
+    a.poids=document.getElementById('ae-poids').value||null;
+    a.taille=document.getElementById('ae-taille').value||null;
+    a.niveau=document.getElementById('ae-niveau').value||null;
+    a.discipline=document.getElementById('ae-discipline').value||null;
+    a.objectif=document.getElementById('ae-objectif').value.trim()||null;
+  }
+  closeAthEdit();
+  showAlert('ae-alert','Profil mis à jour !','success',3000);
+  renderAthleteView();
 }
 
 function renderHistory(athId){
@@ -1489,6 +1538,7 @@ async function saveOnboarding(){
     if(al){al.style.display='block';al.textContent=error.message;}
     return;
   }
+  localStorage.setItem('ob_done_'+currentUser.id,'1');
   var ov=document.getElementById('ob-overlay');
   if(ov) ov.remove();
   onboardingShown=false;
@@ -1496,7 +1546,7 @@ async function saveOnboarding(){
 }
 
 async function skipOnboarding(){
-  // Marquer la fiche avec une valeur par défaut pour ne plus afficher l'onboarding
+  localStorage.setItem('ob_done_'+currentUser.id,'1');
   await sb.rpc('update_athlete_fiche',{
     p_niveau:'Non renseigné',
     p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
