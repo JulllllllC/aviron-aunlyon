@@ -746,6 +746,8 @@ async function doLogout(){
 
 /* ── INIT APP ── */
 async function initApp(user){
+  if(appInitializing||appInitialized) return;
+  appInitializing=true;
   currentUser=user;
   var profile=null;
   for(var i=0;i<3;i++){
@@ -1280,6 +1282,8 @@ function closeEventModal(){document.getElementById('event-modal').style.display=
 
 function addStep(data){var d=data||{},id='step_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);pendingSteps.push({id,stype:d.stype||'Échauffement',label:d.label||'',duree:d.duree||'',dist:d.dist||'',consignes:d.consignes||''});renderSteps();}
 var onboardingShown=false;
+var appInitializing=false;
+var appInitialized=false;
 
 
 
@@ -1503,6 +1507,8 @@ async function skipOnboarding(){
 }
 
 async function finishInit(){
+  appInitializing=false;
+  appInitialized=true;
   document.getElementById('app').style.display='block';
   document.getElementById('login-page').style.display='none';
   document.getElementById('onboarding-page').style.display='none';
@@ -1620,6 +1626,7 @@ function showResetPage(){
     }
     if(event==='SIGNED_OUT'){
       currentUser=null;currentProfile=null;
+      appInitializing=false;appInitialized=false;onboardingShown=false;
       document.getElementById('app').style.display='none';
       document.getElementById('reset-page').style.display='none';
       document.getElementById('login-page').style.display='flex';
