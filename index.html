@@ -791,8 +791,9 @@ async function initApp(user){
     if(ficheSelectErr&&ficheSelectErr.code!=='PGRST116'){
       alert('Erreur lecture fiche: '+ficheSelectErr.message);
     }
-    // Afficher l'onboarding si pas de niveau ET pas de discipline
-    if(!fiche||(!fiche.niveau&&!fiche.discipline)){
+    // Afficher l'onboarding si pas de niveau ET pas de discipline ET pas déjà montré
+    if(!onboardingShown&&(!fiche||(!fiche.niveau&&!fiche.discipline))){
+      onboardingShown=true;
       // Cacher toutes les autres pages
       document.getElementById('login-page').style.cssText='display:none!important';
       document.getElementById('app').style.cssText='display:none!important';
@@ -1278,7 +1279,9 @@ function openEventForm(iso,eid){
 function closeEventModal(){document.getElementById('event-modal').style.display='none';editEvId=null;pendingSteps=[];pendingAttachments=[];}
 
 function addStep(data){var d=data||{},id='step_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);pendingSteps.push({id,stype:d.stype||'Échauffement',label:d.label||'',duree:d.duree||'',dist:d.dist||'',consignes:d.consignes||''});renderSteps();}
-var dragSrcId=null;
+var onboardingShown=false;
+
+
 
 function dragStart(event,id){
   dragSrcId=id;
@@ -1484,6 +1487,7 @@ async function saveOnboarding(){
   }
   var ov=document.getElementById('ob-overlay');
   if(ov) ov.remove();
+  onboardingShown=false;
   await finishInit();
 }
 
