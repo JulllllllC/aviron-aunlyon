@@ -1533,7 +1533,6 @@ async function saveOnboarding(){
     p_discipline:null,
     p_objectif:objectif
   });
-  alert('Résultat: '+(error?'ERREUR: '+error.message:'OK: '+JSON.stringify(rData)));
   if(btn){btn.disabled=false;btn.innerHTML='→ Accéder à l\'application';}
   if(error){
     var al=document.getElementById('ob-alert');
