@@ -1522,14 +1522,15 @@ async function saveOnboarding(){
   var poids=document.getElementById('ob-poids').value?parseFloat(document.getElementById('ob-poids').value):null;
   var taille=document.getElementById('ob-taille').value?parseFloat(document.getElementById('ob-taille').value):null;
   var objectif=document.getElementById('ob-objectif').value.trim()||null;
-  var {error}=await sb.rpc('update_athlete_fiche',{
+  var {data:rData,error}=await sb.rpc('update_athlete_fiche',{
     p_dob:dob,
     p_poids:poids,
     p_taille:taille,
-    p_niveau:'Complété',  // marqueur pour ne plus afficher l'onboarding
+    p_niveau:'Complété',
     p_discipline:null,
     p_objectif:objectif
   });
+  alert('Résultat: '+(error?'ERREUR: '+error.message:'OK: '+JSON.stringify(rData)));
   if(btn){btn.disabled=false;btn.innerHTML='→ Accéder à l\'application';}
   if(error){
     var al=document.getElementById('ob-alert');
