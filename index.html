@@ -1143,6 +1143,7 @@ async function saveAthEdit(){
   var btn=document.getElementById('ae-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner dark"></span>';
   var {error}=await sb.rpc('update_athlete_fiche',{
+    p_user_id:currentUser.id,
     p_dob:document.getElementById('ae-dob').value||null,
     p_poids:document.getElementById('ae-poids').value?parseFloat(document.getElementById('ae-poids').value):null,
     p_taille:document.getElementById('ae-taille').value?parseFloat(document.getElementById('ae-taille').value):null,
@@ -1526,6 +1527,7 @@ async function saveOnboarding(){
   var taille=document.getElementById('ob-taille').value?parseFloat(document.getElementById('ob-taille').value):null;
   var objectif=document.getElementById('ob-objectif').value.trim()||null;
   var {data:rData,error}=await sb.rpc('update_athlete_fiche',{
+    p_user_id:currentUser.id,
     p_dob:dob,
     p_poids:poids,
     p_taille:taille,
@@ -1545,12 +1547,15 @@ async function saveOnboarding(){
   onboardingShown=false;
   onboardingActive=false;
   appInitialized=false;
+  // Recharger les données fraîches depuis Supabase
+  athletes=[];seances={};
   await finishInit();
 }
 
 async function skipOnboarding(){
   localStorage.setItem('ob_done_'+currentUser.id,'1');
   await sb.rpc('update_athlete_fiche',{
+    p_user_id:currentUser.id,
     p_niveau:'Complété',
     p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
   });
