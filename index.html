@@ -799,6 +799,8 @@ async function initApp(user){
     var obKey='ob_done_'+user.id;
     if(!localStorage.getItem(obKey)&&(!fiche||(!fiche.niveau&&!fiche.discipline))){
       onboardingShown=true;
+      onboardingActive=true;
+      appInitializing=false;
       // Cacher toutes les autres pages
       document.getElementById('login-page').style.cssText='display:none!important';
       document.getElementById('app').style.cssText='display:none!important';
@@ -1327,6 +1329,7 @@ function addStep(data){var d=data||{},id='step_'+Date.now()+'_'+Math.random().to
 var onboardingShown=false;
 var appInitializing=false;
 var appInitialized=false;
+var onboardingActive=false;
 
 
 
@@ -1541,21 +1544,26 @@ async function saveOnboarding(){
   var ov=document.getElementById('ob-overlay');
   if(ov) ov.remove();
   onboardingShown=false;
+  onboardingActive=false;
+  appInitialized=false;
   await finishInit();
 }
 
 async function skipOnboarding(){
   localStorage.setItem('ob_done_'+currentUser.id,'1');
   await sb.rpc('update_athlete_fiche',{
-    p_niveau:'Non renseigné',
+    p_niveau:'Complété',
     p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
   });
   var ov=document.getElementById('ob-overlay');
   if(ov) ov.remove();
+  onboardingActive=false;
+  appInitialized=false;
   await finishInit();
 }
 
 async function finishInit(){
+  if(onboardingActive) return; // Ne pas lancer l'app pendant l'onboarding
   appInitializing=false;
   appInitialized=true;
   document.getElementById('app').style.display='block';
@@ -1664,8 +1672,8 @@ function showResetPage(){
       return;
     }
     if(event==='SIGNED_IN'&&session){
-      // Ne rien faire si l'app est déjà en cours d'initialisation ou initialisée
-      if(appInitializing||appInitialized) return;
+      // Ne rien faire si l'app est déjà en cours d'initialisation, initialisée, ou en onboarding
+      if(appInitializing||appInitialized||onboardingActive) return;
       // Ne rien faire si on a déjà un user courant
       if(currentUser) return;
       var meta=session.user.user_metadata||{};
@@ -1678,7 +1686,7 @@ function showResetPage(){
     }
     if(event==='SIGNED_OUT'){
       currentUser=null;currentProfile=null;
-      appInitializing=false;appInitialized=false;onboardingShown=false;
+      appInitializing=false;appInitialized=false;onboardingShown=false;onboardingActive=false;
       document.getElementById('app').style.display='none';
       document.getElementById('reset-page').style.display='none';
       document.getElementById('login-page').style.display='flex';
