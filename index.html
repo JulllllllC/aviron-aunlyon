@@ -1377,11 +1377,17 @@ function getRealisesForDate(iso){
 }
 
 function calDayHTML(iso,today){
-  var prevus=getPrevusForDate(iso),realises=getRealisesForDate(iso),isToday=iso===today,dayNum=parseInt(iso.split('-')[2],10);
+  var prevus=getPrevusForDate(iso),isToday=iso===today,dayNum=parseInt(iso.split('-')[2],10);
   var html=isToday?'<div class="cal-day-num"><span class="today-circle">'+dayNum+'</span></div>':'<div class="cal-day-num">'+dayNum+'</div>';
-  if(prevus.length){html+='<div class="cal-label">Prévu</div>';for(var i=0;i<Math.min(prevus.length,2);i++){var ev=prevus[i],c=typeColor(ev.type);html+='<div class="cal-prevu bg-'+c+'" onclick="showEventDetail(\''+ev.id+'\')" title="'+esc(ev.titre||ev.type)+'">'+esc(ev.titre||ev.type)+'</div>';}}
-  if(realises.length){html+='<div class="cal-label" style="margin-top:2px">Réalisé</div>';for(var i=0;i<Math.min(realises.length,2);i++){var r=realises[i],c=typeColor(r.seance.type);html+='<div class="cal-realise bg-'+c+'" onclick="showRealisedDetail(\''+r.athlete.id+'\',\''+r.seance.id+'\')" title="'+esc(r.athlete.prenom)+'">'+esc(r.athlete.prenom)+' · '+esc(r.seance.type)+'</div>';}}
-  if(currentProfile.role!=='athlete') html+='<button class="cal-add-btn" onclick="event.stopPropagation();openEventForm(\''+iso+'\')" title="Programmer">+</button>';
+  if(prevus.length){
+    for(var i=0;i<Math.min(prevus.length,2);i++){
+      var ev=prevus[i],c=typeColor(ev.type);
+      var done=getRealisesForDate(iso).filter(function(r){return r.seance.type===ev.type;}).length;
+      html+='<div class="cal-prevu bg-'+c+'" onclick="showEventDetail(\''+ev.id+'\')" title="'+esc(ev.titre||ev.type)+'">'+esc(ev.titre||ev.type)+(done?'<span style="float:right;font-size:9px;background:var(--green);color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px">✓'+done+'</span>':'')+'</div>';
+    }
+    if(prevus.length>2)html+='<div class="txs" style="font-size:9px;padding:0 2px">+'+(prevus.length-2)+'</div>';
+  }
+  if(currentProfile&&currentProfile.role!=='athlete') html+='<button class="cal-add-btn" onclick="event.stopPropagation();openEventForm(\''+iso+'\')" title="Programmer">+</button>';
   return html;
 }
 
@@ -1406,9 +1412,15 @@ function renderWeekView(today){
     html+='<div class="week-col'+(isToday?' today':'')+'"><div class="week-col-head"><div class="week-day-name">'+DAYS[d]+'</div>';
     if(isToday)html+='<div class="week-day-num tdn">'+day.getDate()+'</div>';else html+='<div class="week-day-num">'+day.getDate()+'</div>';
     html+='</div>';
-    if(prevus.length){html+='<div style="margin-bottom:6px"><div class="week-section-lbl"><span class="status-dot status-plan"></span>Prévu</div>';prevus.forEach(function(ev){var c=typeColor(ev.type);html+='<div class="week-pill bg-'+c+'" onclick="showEventDetail(\''+ev.id+'\')">'+esc(ev.titre||ev.type)+(ev.duree?'<br><span style="font-size:10px;opacity:.8">'+ev.duree+' min</span>':'')+'</div>';});html+='</div>';}
-    if(realises.length){html+='<div style="margin-bottom:6px"><div class="week-section-lbl"><span class="status-dot status-done"></span>Réalisé</div>';realises.forEach(function(r){var c=typeColor(r.seance.type),ch=charge(r.seance.rpe,r.seance.duree);html+='<div class="week-pill bg-'+c+'" onclick="showRealisedDetail(\''+r.athlete.id+'\',\''+r.seance.id+'\')">'+esc(r.athlete.prenom)+' · '+esc(r.seance.type)+(r.seance.duree?'<br><span style="font-size:10px;opacity:.8">'+r.seance.duree+' min'+(r.seance.dist?' · '+r.seance.dist+' km':'')+'</span>':'')+(ch?'<div class="charge-bar"><div class="charge-fill" style="width:'+Math.min(100,ch/6)+'%;background:'+chargeColor(ch)+'"></div></div>':'')+'</div>';});html+='</div>';}
-    if(prevus.length&&!realises.length&&iso<today)html+='<div class="txs" style="display:flex;align-items:center;gap:4px;font-size:10px;margin-top:4px"><span class="status-dot status-miss"></span>Non réalisé</div>';
+    if(prevus.length){
+      html+='<div style="margin-bottom:6px">';
+      prevus.forEach(function(ev){
+        var c=typeColor(ev.type);
+        var done=getRealisesForDate(iso).filter(function(r){return r.seance.type===ev.type;}).length;
+        html+='<div class="week-pill bg-'+c+'" onclick="showEventDetail(\''+ev.id+'\')">'+esc(ev.titre||ev.type)+(ev.duree?'<br><span style="font-size:10px;opacity:.8">'+ev.duree+' min</span>':'')+(done?'<br><span style="font-size:10px;color:var(--green);font-weight:700">✓ '+done+' réalisée'+(done>1?'s':'')+'</span>':'')+'</div>';
+      });
+      html+='</div>';
+    }
     if(currentProfile.role!=='athlete')html+='<button class="week-add" onclick="openEventForm(\''+iso+'\')">+ Programmer</button>';
     html+='</div>';
   }
@@ -1521,6 +1533,24 @@ function showEventDetail(id){
   if(ev.steps&&ev.steps.length){html+='<div class="stitle" style="margin-top:12px">Programme</div><div class="steps-list">'+ev.steps.map(function(s,i){var meta=[];if(s.duree)meta.push(s.duree+' min');if(s.dist)meta.push(s.dist+' km');return'<div class="step-row"><div class="step-num">'+(i+1)+'</div><div class="step-body"><div class="row wrap" style="gap:6px;margin-bottom:4px"><span class="step-tag '+(STEP_COLORS[s.stype]||'autre')+'">'+esc(s.stype)+'</span>'+(s.label?'<strong>'+esc(s.label)+'</strong>':'')+'</div>'+(meta.length?'<div class="txs">'+meta.join(' · ')+'</div>':'')+(s.consignes?'<div class="tsm" style="line-height:1.5">'+esc(s.consignes)+'</div>':'')+'</div></div>';}).join('')+'</div>';}
   if(ev.attachments&&ev.attachments.length){html+='<div class="stitle" style="margin-top:12px">Pièces jointes</div>'+ev.attachments.map(function(a){return'<div class="attachment"><div class="att-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--rouge-dark)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;min-width:0"><div class="tsm fw">'+esc(a.name)+'</div><div class="txs">'+fmtSize(a.size)+'</div></div><a href="'+a.data+'" download="'+esc(a.name)+'" class="btn sm">↓</a></div>';}).join('');}
   if(isCoach)html+='<div class="sep"></div><div class="row" style="justify-content:flex-end;gap:8px"><button class="btn danger sm" onclick="deleteEvent(\''+id+'\')">Supprimer</button><button class="btn sm" onclick="closeDetailModal();openEventForm(null,\''+id+'\')">Modifier</button></div>';
+  // Afficher les athlètes ayant validé cette séance
+  var evDate=String(ev.date).split('T')[0];
+  var validations=getRealisesForDate(evDate).filter(function(r){return r.seance.type===ev.type;});
+  if(validations.length){
+    html+='<div class="sep"></div><div class="stitle">Athlètes ayant validé ('+validations.length+')</div>';
+    html+=validations.map(function(r){
+      var ch=charge(r.seance.rpe,r.seance.duree);
+      return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gris4)">'
+        +'<div class="avatar" style="width:32px;height:32px;font-size:12px">'+inits(r.athlete.prenom,r.athlete.nom)+'</div>'
+        +'<div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(r.athlete.prenom)+' '+esc(r.athlete.nom)+'</div>'
+        +'<div class="txs">'+(r.seance.duree?r.seance.duree+' min · ':'')+(r.seance.dist?r.seance.dist+' km · ':'')+(r.seance.rpe?'RPE '+r.seance.rpe+'/10 · ':'')+(ch?'<span style="color:'+chargeColor(ch)+';font-weight:700">Charge '+ch+'</span>':'')+'</div>'
+        +'</div>'
+        +(r.seance.rpe?'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:800;color:'+chargeColor(ch)+'">'+r.seance.rpe+'<span style="font-size:11px">/10</span></div>':'')
+      +'</div>';
+    }).join('');
+  } else if(isCoach&&evDate<=todayISO()){
+    html+='<div class="sep"></div><div class="txs" style="color:var(--gris2);text-align:center;padding:8px 0">Aucun athlète n\'a encore validé cette séance</div>';
+  }
   document.getElementById('det-modal-title').textContent=ev.titre||'Séance du '+fmtDate(ev.date);
   document.getElementById('det-modal-body').innerHTML=html;
   document.getElementById('detail-modal').style.display='flex';
