@@ -949,11 +949,24 @@ async function loadData(){
       var {data:sc}=await sb.from('seances').select('*').eq('athlete_id',ath.id).order('date',{ascending:false});
       seances[ath.id]=sc||[];
     }
-    // Calendrier : groupes de l'athlète
+    // Charger les groupes de l'athlète
     var {data:gm}=await sb.from('groupe_membres').select('groupe_id').eq('athlete_id',ath?ath.id:'');
     var grpIds=(gm||[]).map(function(g){return g.groupe_id;});
+    // Charger les infos des groupes pour l'affichage
+    if(grpIds.length){
+      var {data:grp}=await sb.from('groupes').select('*').in('id',grpIds);
+      groupes=(grp||[]).map(function(g){g.memberIds=[ath?ath.id:''];return g;});
+    } else {
+      groupes=[];
+    }
+    // Charger tous les événements — filtrés par groupe ou sans groupe
     var {data:ev}=await sb.from('cal_events').select('*').order('date');
-    calEvents=(ev||[]).filter(function(e){return !e.groupe_id||grpIds.indexOf(e.groupe_id)>-1;});
+    calEvents=(ev||[]).filter(function(e){
+      // Événements sans groupe = visibles par tous
+      if(!e.groupe_id) return true;
+      // Événements du groupe de l'athlète
+      return grpIds.indexOf(e.groupe_id)>-1;
+    });
   } else {
     var {data:ath}=await sb.from('athletes').select('*').order('nom');
     athletes=ath||[];
