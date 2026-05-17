@@ -782,61 +782,12 @@ async function initApp(user){
   // Pour les athlètes : créer la fiche si elle n'existe pas
   if(currentProfile.role==='athlete'){
     var meta=user.user_metadata||{};
-    // Créer la fiche vide via RPC
-    var {data:ficheData,error:ficheErr}=await sb.rpc('create_athlete_fiche',{
+    await sb.rpc('create_athlete_fiche',{
       p_user_id:user.id,
       p_prenom:currentProfile.prenom||meta.prenom||'',
       p_nom:currentProfile.nom||meta.nom||'',
       p_dob:null,p_poids:null,p_taille:null,p_niveau:null,p_discipline:null
     });
-    console.log('create_athlete_fiche:', ficheData, ficheErr);
-    // Vérifier si la fiche est incomplète
-    var {data:fiche,error:ficheSelectErr}=await sb.from('athletes').select('id,niveau,discipline,dob').eq('user_id',user.id).single();
-    console.log('fiche select:', fiche, ficheSelectErr);
-    // Si erreur de lecture de fiche, afficher le message
-    if(ficheSelectErr&&ficheSelectErr.code!=='PGRST116'){
-      alert('Erreur lecture fiche: '+ficheSelectErr.message);
-    }
-    // Afficher l'onboarding si pas de niveau ET pas de discipline ET pas déjà montré
-    var obKey='ob_done_'+user.id;
-    if(!localStorage.getItem(obKey)&&(!fiche||(!fiche.niveau&&!fiche.discipline))){
-      onboardingShown=true;
-      onboardingActive=true;
-      appInitializing=false;
-      // Cacher toutes les autres pages
-      document.getElementById('login-page').style.cssText='display:none!important';
-      document.getElementById('app').style.cssText='display:none!important';
-      document.getElementById('reset-page').style.cssText='display:none!important';
-      // Afficher l'onboarding par-dessus tout
-      // Créer l'onboarding directement dans le body
-      var existing=document.getElementById('ob-overlay');
-      if(existing) existing.remove();
-      var obDiv=document.createElement('div');
-      obDiv.id='ob-overlay';
-      obDiv.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:#111110;z-index:99999;overflow-y:auto;padding:32px 16px;box-sizing:border-box;font-family:Barlow,sans-serif';
-      obDiv.innerHTML='<div style="max-width:480px;margin:0 auto">'
-        +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">'
-          +'<div style="width:42px;height:42px;background:#CC1111;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12c3-4 5-6 10-6s7 2 10 6M6 14l2-4 4 3 4-5 2 6"/></svg></div>'
-          +'<div><div style="font-size:22px;font-weight:800;color:#fff;font-family:Barlow Condensed,sans-serif">Bienvenue !</div><div style="font-size:12px;color:rgba(255,255,255,.4)">Complétez votre fiche athlète</div></div>'
-        +'</div>'
-        +'<div style="background:#fff;border-radius:14px;padding:24px;border-top:3px solid #CC1111">'
-          +'<div style="font-size:20px;font-weight:800;margin-bottom:6px;color:#111;font-family:Barlow Condensed,sans-serif">Votre profil sportif</div>'
-          +'<div style="font-size:13px;color:#666;margin-bottom:20px">Ces informations aideront votre coach à personnaliser votre entraînement.</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Naissance</label><input type="date" id="ob-dob" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"></div>'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Poids kg</label><input type="number" id="ob-poids" placeholder="72" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"></div>'
-            +'<div><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Taille cm</label><input type="number" id="ob-taille" placeholder="180" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box"></div>'
-          +'</div>'
-          +'<div style="margin-bottom:16px"><label style="display:block;font-size:10px;font-weight:700;color:#9E0C0C;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Objectif de la saison</label><textarea id="ob-objectif" placeholder="Ex : Championnats régionaux..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;min-height:68px;resize:vertical;box-sizing:border-box"></textarea></div>'
-          +'<div id="ob-alert" style="display:none;padding:10px 14px;background:#F9ECEC;color:#9E0C0C;border-radius:6px;margin-bottom:12px;font-size:13px;border-left:3px solid #CC1111"></div>'
-          +'<button onclick="saveOnboarding()" style="width:100%;background:#CC1111;color:#fff;border:none;border-radius:6px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.2px">→ Accéder à l\'application</button>'
-          +'<div style="text-align:center;margin-top:12px"><button onclick="skipOnboarding()" style="background:none;border:none;font-size:12px;color:rgba(255,255,255,.35);cursor:pointer">Passer cette étape</button></div>'
-        +'</div>'
-      +'</div>';
-      obDiv.dataset.userId=user.id;
-      document.body.appendChild(obDiv);
-      return;
-    }
   }
 
   document.getElementById('login-page').style.display='none';
