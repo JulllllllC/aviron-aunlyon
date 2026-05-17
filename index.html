@@ -532,6 +532,10 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
         <!-- Données à remplir par l'athlète -->
         <div class="stitle">Vos données <span style="font-size:11px;color:var(--gris2);font-weight:400;text-transform:none;letter-spacing:0">(toutes optionnelles)</span></div>
         <div class="fg g2">
+          <div class="field"><label>Durée réelle (min)</label><input type="number" id="vs-duree" placeholder="60"></div>
+          <div class="field"><label>Distance réelle (km)</label><input type="number" id="vs-dist" placeholder="12" step="0.1"></div>
+        </div>
+        <div class="fg g2">
           <div class="field"><label>Embarcation</label><select id="vs-embarcation"><option value="">— —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Quatre de couple (4x)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>
           <div class="field"><label>Météo</label><select id="vs-meteo"><option value="">— —</option><option>Ensoleillé, calme</option><option>Nuageux, vent modéré</option><option>Pluie légère</option><option>Vent fort</option><option>Ergomètre (intérieur)</option></select></div>
         </div>
@@ -1725,9 +1729,12 @@ function openValidateModal(evId){
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">'+esc(ev.titre||ev.type)+'</div>'
     +'<div class="txs">'+(ev.duree?ev.duree+' min ':'')+(ev.dist?'· '+ev.dist+' km':'')+'</div>'
     +(ev.description?'<div class="tsm" style="margin-top:6px">'+esc(ev.description)+'</div>':'');
+  // Préremplir durée et distance depuis la séance planifiée
+  document.getElementById('vs-duree').value=ev.duree||'';
+  document.getElementById('vs-dist').value=ev.dist||'';
   // Vider les champs athlète
   ['vs-embarcation','vs-meteo'].forEach(function(id){document.getElementById(id).value='';});
-  ['vs-rpe','vs-fc','vs-allure','vs-notes'].forEach(function(id){document.getElementById(id).value='';});
+  ['vs-rpe','vs-fc','vs-allure','vs-notes'].forEach(function(id){document.getElementById(id).value='';}); 
   document.getElementById('validate-session-modal').style.display='flex';
 }
 function closeValidateModal(){
@@ -1745,8 +1752,8 @@ async function validateSession(){
     athlete_id:a.id,
     date:String(ev.date).split('T')[0],
     type:ev.type,
-    duree:ev.duree||null,
-    dist:ev.dist||null,
+    duree:document.getElementById('vs-duree').value||ev.duree||null,
+    dist:document.getElementById('vs-dist').value||ev.dist||null,
     fc:document.getElementById('vs-fc').value||null,
     rpe:document.getElementById('vs-rpe').value||null,
     embarcation:document.getElementById('vs-embarcation').value||null,
