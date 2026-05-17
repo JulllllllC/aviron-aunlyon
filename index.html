@@ -423,30 +423,56 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
   <div id="admin-users-list"></div>
 </div>
 
-<!-- COACH -->
+<!-- COACH ATHLÈTES -->
 <div id="tab-coach" class="sec">
-  <div class="ph row btwn">
-    <div><h1>Mes athlètes <span id="ath-count"></span></h1><div class="sep-rouge"></div><p>Créez et gérez les fiches de votre équipe</p></div>
-    <button class="btn primary" onclick="openAthleteForm('new')">+ Nouvelle fiche</button>
+  <!-- Sous-onglets -->
+  <div style="display:flex;gap:2px;background:var(--noir);padding:3px;border-radius:8px;margin-bottom:1.5rem;width:fit-content">
+    <button class="vtab active" id="coach-tab-ath" onclick="switchCoachTab('athletes')">Athlètes</button>
+    <button class="vtab" id="coach-tab-grp" onclick="switchCoachTab('groupes')">Groupes</button>
   </div>
-  <div id="coach-alert" class="alert"></div>
-  <div id="form-zone" class="card form" style="display:none">
-    <div class="form-section-title"><span id="form-title">Nouvelle fiche</span><button class="btn sm" style="border:none;background:none;color:var(--gris2)" onclick="closeAthleteForm()">✕</button></div>
-    <div class="fg g2"><div class="field"><label>Prénom *</label><input type="text" id="f-prenom" placeholder="Lucas"></div><div class="field"><label>Nom *</label><input type="text" id="f-nom" placeholder="Dupont"></div></div>
-    <div class="fg g3"><div class="field"><label>Date de naissance</label><input type="date" id="f-dob"></div><div class="field"><label>Poids (kg)</label><input type="number" id="f-poids" placeholder="75"></div><div class="field"><label>Taille (cm)</label><input type="number" id="f-taille" placeholder="185"></div></div>
-    <div class="fg g2">
-      <div class="field"><label>Niveau</label><select id="f-niveau"><option value="">— Choisir —</option><option>Débutant</option><option>Intermédiaire</option><option>Confirmé</option><option>Élite</option></select></div>
-      <div class="field"><label>Discipline</label><select id="f-discipline"><option value="">— Choisir —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>
-    </div>
-    <div class="field" style="margin-bottom:12px"><label>Email du compte athlète (optionnel)</label><input type="email" id="f-email" placeholder="athlète@email.com — pour lier son compte"></div>
-    <div class="fg"><div class="field"><label>Objectif de la saison</label><textarea id="f-objectif" placeholder="Ex : Championnats régionaux..."></textarea></div><div class="field"><label>Notes coach (privées)</label><textarea id="f-notes" placeholder="Points techniques, blessures..."></textarea></div></div>
-    <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeAthleteForm()">Annuler</button><button class="btn primary sm" id="save-ath-btn" onclick="saveAthlete()">✓ Enregistrer</button></div>
-  </div>
-  <div id="athletes-list"></div>
 
-  <!-- GROUPES -->
-  <div style="margin-top:2rem">
-    <div class="ph row btwn" style="margin-bottom:1rem">
+  <!-- VUE ATHLÈTES -->
+  <div id="coach-view-athletes">
+    <div class="ph row btwn">
+      <div><h1>Mes athlètes <span id="ath-count"></span></h1><div class="sep-rouge"></div><p>Créez et gérez les fiches de votre équipe</p></div>
+      <button class="btn primary" onclick="openAthleteForm('new')">+ Nouvelle fiche</button>
+    </div>
+    <!-- Barre de recherche et filtres -->
+    <div style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px;position:relative">
+        <input type="text" id="ath-search" placeholder="Rechercher un athlète..." oninput="filterAthletes()" style="padding-left:36px">
+        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--gris2);fill:none;stroke-width:2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+      <select id="ath-filter-group" onchange="filterAthletes()" style="min-width:160px;width:auto">
+        <option value="">Tous les groupes</option>
+      </select>
+      <select id="ath-filter-niveau" onchange="filterAthletes()" style="min-width:140px;width:auto">
+        <option value="">Tous les niveaux</option>
+        <option>Débutant</option>
+        <option>Intermédiaire</option>
+        <option>Confirmé</option>
+        <option>Élite</option>
+      </select>
+    </div>
+    <div id="coach-alert" class="alert"></div>
+    <div id="form-zone" class="card form" style="display:none">
+      <div class="form-section-title"><span id="form-title">Nouvelle fiche</span><button class="btn sm" style="border:none;background:none;color:var(--gris2)" onclick="closeAthleteForm()">✕</button></div>
+      <div class="fg g2"><div class="field"><label>Prénom *</label><input type="text" id="f-prenom" placeholder="Lucas"></div><div class="field"><label>Nom *</label><input type="text" id="f-nom" placeholder="Dupont"></div></div>
+      <div class="fg g3"><div class="field"><label>Date de naissance</label><input type="date" id="f-dob"></div><div class="field"><label>Poids (kg)</label><input type="number" id="f-poids" placeholder="75"></div><div class="field"><label>Taille (cm)</label><input type="number" id="f-taille" placeholder="185"></div></div>
+      <div class="fg g2">
+        <div class="field"><label>Niveau</label><select id="f-niveau"><option value="">— Choisir —</option><option>Débutant</option><option>Intermédiaire</option><option>Confirmé</option><option>Élite</option></select></div>
+        <div class="field"><label>Discipline</label><select id="f-discipline"><option value="">— Choisir —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>
+      </div>
+      <div class="field" style="margin-bottom:12px"><label>Email du compte athlète (optionnel)</label><input type="email" id="f-email" placeholder="athlète@email.com — pour lier son compte"></div>
+      <div class="fg"><div class="field"><label>Objectif de la saison</label><textarea id="f-objectif" placeholder="Ex : Championnats régionaux..."></textarea></div><div class="field"><label>Notes coach (privées)</label><textarea id="f-notes" placeholder="Points techniques, blessures..."></textarea></div></div>
+      <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeAthleteForm()">Annuler</button><button class="btn primary sm" id="save-ath-btn" onclick="saveAthlete()">✓ Enregistrer</button></div>
+    </div>
+    <div id="athletes-list"></div>
+  </div>
+
+  <!-- VUE GROUPES -->
+  <div id="coach-view-groupes" style="display:none">
+    <div class="ph row btwn">
       <div><h1>Groupes <span id="grp-count"></span></h1><div class="sep-rouge"></div><p>Regroupez vos athlètes par catégorie</p></div>
       <button class="btn primary" onclick="openGroupForm('new')">+ Nouveau groupe</button>
     </div>
@@ -830,6 +856,15 @@ function buildNavTabs(){
   document.getElementById('mobile-nav-bar').innerHTML=mhtml;
 }
 
+function switchCoachTab(tab){
+  document.getElementById('coach-view-athletes').style.display=tab==='athletes'?'block':'none';
+  document.getElementById('coach-view-groupes').style.display=tab==='groupes'?'block':'none';
+  document.getElementById('coach-tab-ath').className='vtab'+(tab==='athletes'?' active':'');
+  document.getElementById('coach-tab-grp').className='vtab'+(tab==='groupes'?' active':'');
+  if(tab==='athletes') renderAthletes();
+  else renderGroups();
+}
+
 function switchTab(t){
   document.querySelectorAll('.nav-tab').forEach(function(e){e.classList.remove('active');});
   document.querySelectorAll('.mobile-nav-item').forEach(function(e){e.classList.remove('active');});
@@ -842,7 +877,7 @@ function switchTab(t){
   if(sec) sec.classList.add('active');
   // Scroll en haut sur mobile
   window.scrollTo(0,0);
-  if(t==='coach'){renderAthletes();renderGroups();}
+  if(t==='coach'){b.className='nbadge coach';b.style.cssText='';b.textContent='Vue coach';switchCoachTab('athletes');}
   else if(t==='athlete'){renderAthleteView();document.getElementById('s-date').value=todayISO();}
   else if(t==='calendar'){renderCalendar();}
   else if(t==='analyse'){initAnalyse();}
@@ -931,21 +966,61 @@ async function changeRole(userId,newRole){
 }
 
 /* ── ATHLETES ── */
+function filterAthletes(){
+  var search=(document.getElementById('ath-search').value||'').toLowerCase().trim();
+  var groupFilter=document.getElementById('ath-filter-group').value;
+  var niveauFilter=document.getElementById('ath-filter-niveau').value;
+  var filtered=athletes.filter(function(a){
+    // Filtre texte
+    if(search){
+      var fullname=(a.prenom+' '+a.nom).toLowerCase();
+      if(!fullname.includes(search)) return false;
+    }
+    // Filtre groupe
+    if(groupFilter){
+      var grp=groupes.find(function(g){return g.id===groupFilter;});
+      if(!grp||(grp.memberIds||[]).indexOf(a.id)===-1) return false;
+    }
+    // Filtre niveau
+    if(niveauFilter&&a.niveau!==niveauFilter) return false;
+    return true;
+  });
+  renderAthletesList(filtered);
+}
+
 function renderAthletes(){
-  var list=document.getElementById('athletes-list');
+  // Mettre à jour le compteur
   document.getElementById('ath-count').textContent=athletes.length?'— '+athletes.length+' athlète'+(athletes.length>1?'s':''):'';
-  if(!athletes.length){list.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Aucun athlète</div>';return;}
-  var html='';
-  athletes.forEach(function(a){
+  // Remplir le filtre groupes
+  var gsel=document.getElementById('ath-filter-group');
+  if(gsel){
+    var cur=gsel.value;
+    gsel.innerHTML='<option value="">Tous les groupes</option>'+groupes.map(function(g){return'<option value="'+g.id+'">'+esc(g.nom)+'</option>';}).join('');
+    if(cur) gsel.value=cur;
+  }
+  renderAthletesList(athletes);
+}
+
+function renderAthletesList(list){
+  var el=document.getElementById('athletes-list');
+  if(!list.length){
+    el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'+(athletes.length?'Aucun athlète ne correspond aux filtres':'Aucun athlète — créez la première fiche !')+'</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(a){
     var sc=seances[a.id]||[];
     var ns=sc.length,km=sc.reduce(function(s,x){return s+(parseFloat(x.dist)||0);},0);
     var last=sc.length?sc[sc.length-1]:null;
-    html+='<div class="acard"><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">'
+    // Groupes de l'athlète
+    var athGroupes=groupes.filter(function(g){return(g.memberIds||[]).indexOf(a.id)>-1;});
+    return'<div class="acard"><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">'
       +'<div class="avatar">'+inits(a.prenom,a.nom)+'</div>'
       +'<div style="flex:1;min-width:0"><div class="row btwn wrap" style="gap:6px">'
         +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:18px">'+esc(a.prenom)+' '+esc(a.nom)+'</div>'
         +'<div>'+(a.niveau?'<span class="tag rouge">'+esc(a.niveau)+'</span>':'')+(a.discipline?'<span class="tag gray">'+esc(a.discipline)+'</span>':'')+'</div>'
-      +'</div></div></div>'
+      +'</div>'
+      +(athGroupes.length?'<div style="margin-top:4px">'+athGroupes.map(function(g){return'<span class="tag '+g.couleur+'" style="font-size:10px">'+esc(g.nom)+'</span>';}).join('')+'</div>':'')
+      +'</div></div>'
       +'<div class="stats3"><div class="sbox"><div class="sval">'+ns+'</div><div class="slbl">séances</div></div><div class="sbox"><div class="sval">'+km.toFixed(1)+'</div><div class="slbl">km</div></div><div class="sbox"><div class="sval">'+(ns>0?(km/ns).toFixed(1):'—')+'</div><div class="slbl">km/séance</div></div></div>'
       +(a.objectif?'<div class="tsm" style="margin-bottom:10px">'+esc(a.objectif)+'</div>':'')
       +(last?'<div class="txs" style="margin-bottom:10px">Dernière séance : '+fmtDate(last.date)+' — <span class="tag '+typeColor(last.type)+'" style="font-size:10px">'+esc(last.type)+'</span></div>':'')
@@ -953,8 +1028,7 @@ function renderAthletes(){
         +'<div></div>'
         +'<div class="row" style="gap:6px"><button class="btn sm" onclick="openAthleteForm(\'edit\',\''+a.id+'\')">Modifier</button><button class="btn sm danger icon" onclick="deleteAthlete(\''+a.id+'\')">✕</button></div>'
       +'</div></div>';
-  });
-  list.innerHTML=html;
+  }).join('');
 }
 
 function openAthleteForm(mode,id){
