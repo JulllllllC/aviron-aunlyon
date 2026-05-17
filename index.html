@@ -511,15 +511,56 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
     <div id="ae-alert" class="alert"></div>
     <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeAthEdit()">Annuler</button><button class="btn primary sm" id="ae-btn" onclick="saveAthEdit()">✓ Enregistrer</button></div>
   </div>
-  <div class="stitle">Saisir une séance</div>
+
+  <!-- Séances à valider -->
+  <div class="stitle">Séances à valider</div>
+  <div id="ath-planned-sessions"></div>
+
+  <!-- Formulaire validation séance planifiée -->
+  <div id="validate-session-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeValidateModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Valider la séance</div>
+        <button class="modal-close" onclick="closeValidateModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Infos de la séance planifiée (lecture seule) -->
+        <div class="prevu-block" style="margin-bottom:16px">
+          <div class="stitle" style="margin-bottom:8px">Séance programmée</div>
+          <div id="vs-planned-info"></div>
+        </div>
+        <!-- Données à remplir par l'athlète -->
+        <div class="stitle">Vos données <span style="font-size:11px;color:var(--gris2);font-weight:400;text-transform:none;letter-spacing:0">(toutes optionnelles)</span></div>
+        <div class="fg g2">
+          <div class="field"><label>Embarcation</label><select id="vs-embarcation"><option value="">— —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Quatre de couple (4x)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>
+          <div class="field"><label>Météo</label><select id="vs-meteo"><option value="">— —</option><option>Ensoleillé, calme</option><option>Nuageux, vent modéré</option><option>Pluie légère</option><option>Vent fort</option><option>Ergomètre (intérieur)</option></select></div>
+        </div>
+        <div class="fg g3">
+          <div class="field"><label>RPE (1–10)</label><input type="number" id="vs-rpe" placeholder="7" min="1" max="10"></div>
+          <div class="field"><label>FC moy (bpm)</label><input type="number" id="vs-fc" placeholder="145"></div>
+          <div class="field"><label>Allure (s/500m)</label><input type="number" id="vs-allure" placeholder="120" min="1"></div>
+        </div>
+        <div class="field" style="margin-bottom:14px"><label>Compte-rendu / sensations</label><textarea id="vs-notes" placeholder="Décrivez le déroulé, vos sensations..."></textarea></div>
+        <div id="vs-alert" class="alert"></div>
+        <div class="row" style="justify-content:flex-end;gap:8px">
+          <button class="btn sm" onclick="closeValidateModal()">Annuler</button>
+          <button class="btn primary" id="vs-btn" onclick="validateSession()">✓ Valider la séance</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saisie libre -->
+  <div class="stitle" style="margin-top:1.5rem">Saisir une séance libre</div>
   <div class="card">
     <div class="fg g2"><div class="field"><label>Date *</label><input type="date" id="s-date"></div><div class="field"><label>Type</label><select id="s-type"></select></div></div>
     <div class="fg g3"><div class="field"><label>Durée (min)</label><input type="number" id="s-duree" placeholder="60"></div><div class="field"><label>Distance (km)</label><input type="number" id="s-dist" placeholder="12" step="0.1"></div><div class="field"><label>FC moy (bpm)</label><input type="number" id="s-fc" placeholder="145"></div></div>
     <div class="fg g3">
       <div class="field"><label>RPE (1–10)</label><input type="number" id="s-rpe" placeholder="7" min="1" max="10"></div>
       <div class="field"><label>Embarcation</label><select id="s-embarcation"><option value="">— —</option><option>Skiff (1x)</option><option>Deux sans barreur (2-)</option><option>Deux de couple (2x)</option><option>Quatre de pointe (4-)</option><option>Quatre barré (4+)</option><option>Quatre de couple (4x)</option><option>Huit (8+)</option><option>Ergomètre</option></select></div>
-      <div class="field"><label>Météo</label><select id="s-meteo"><option value="">— —</option><option>Ensoleillé, calme</option><option>Nuageux, vent modéré</option><option>Pluie légère</option><option>Vent fort</option><option>Ergomètre (intérieur)</option></select></div>
+      <div class="field"><label>Allure (s/500m)</label><input type="number" id="s-allure" placeholder="120" min="1"></div>
     </div>
+    <div class="field" style="margin-bottom:14px"><label>Météo</label><select id="s-meteo"><option value="">— —</option><option>Ensoleillé, calme</option><option>Nuageux, vent modéré</option><option>Pluie légère</option><option>Vent fort</option><option>Ergomètre (intérieur)</option></select></div>
     <div class="field" style="margin-bottom:14px"><label>Compte-rendu / sensations</label><textarea id="s-notes" placeholder="Décrivez le déroulé, vos sensations..."></textarea></div>
     <div id="s-alert" class="alert"></div>
     <div style="text-align:right"><button class="btn primary" id="s-btn" onclick="saveSeance()">Enregistrer la séance</button></div>
@@ -1148,6 +1189,7 @@ function renderAthleteView(){
   if(!a){document.getElementById('ath-profile-card').innerHTML='<div class="card"><div class="tsm">Aucune fiche liée à votre compte. Contactez votre coach.</div></div>';document.getElementById('seances-history').innerHTML='';return;}
   var sc=seances[a.id]||[];
   document.getElementById('ath-profile-card').innerHTML='<div class="card accent" style="margin-bottom:1rem"><div class="row btwn wrap" style="gap:8px"><div class="row" style="gap:12px"><div class="avatar lg">'+inits(a.prenom,a.nom)+'</div><div><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:20px">'+esc(a.prenom)+' '+esc(a.nom)+'</div><div class="sep-rouge" style="width:24px;margin:4px 0 6px"></div><div>'+(a.niveau?'<span class="tag rouge">'+esc(a.niveau)+'</span>':'')+(a.discipline?'<span class="tag gray">'+esc(a.discipline)+'</span>':'')+(a.poids?'<span class="tag gray">'+a.poids+' kg</span>':'')+(a.taille?'<span class="tag gray">'+a.taille+' cm</span>':'')+'</div></div></div><div class="row" style="gap:8px;align-items:flex-start"><div class="sbox" style="min-width:70px"><div class="sval">'+sc.length+'</div><div class="slbl">séances</div></div><button class="btn sm" onclick="openAthEdit()">✏ Modifier</button></div></div>'+(a.objectif?'<div class="sep"></div><div class="tsm">Objectif : <strong>'+esc(a.objectif)+'</strong></div>':'')+'</div>';
+  renderPlannedSessions();
   renderHistory(a.id);
 }
 
@@ -1221,7 +1263,7 @@ async function saveSeance(){
   var date=document.getElementById('s-date').value;
   if(!date){showAlert('s-alert','Veuillez renseigner la date.','info');return;}
   var btn=document.getElementById('s-btn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
-  var data={athlete_id:athId,date,type:document.getElementById('s-type').value,duree:document.getElementById('s-duree').value||null,dist:document.getElementById('s-dist').value||null,fc:document.getElementById('s-fc').value||null,rpe:document.getElementById('s-rpe').value||null,embarcation:document.getElementById('s-embarcation').value,meteo:document.getElementById('s-meteo').value,notes:document.getElementById('s-notes').value};
+  var data={athlete_id:athId,date,type:document.getElementById('s-type').value,duree:document.getElementById('s-duree').value||null,dist:document.getElementById('s-dist').value||null,fc:document.getElementById('s-fc').value||null,rpe:document.getElementById('s-rpe').value||null,embarcation:document.getElementById('s-embarcation').value,meteo:document.getElementById('s-meteo').value,notes:document.getElementById('s-notes').value,allure:document.getElementById('s-allure').value||null};
   var {data:ns,error}=await sb.from('seances').insert(data).select().single();
   btn.disabled=false;btn.innerHTML='Enregistrer la séance';
   if(error){showAlert('s-alert',error.message,'error');return;}
@@ -1546,7 +1588,95 @@ function renderTable(sc){
   html+='</tbody></table></div>';document.getElementById('an-table').innerHTML=html;
 }
 
-/* ── ONBOARDING ATHLÈTE ── */
+/* ── SÉANCES PLANIFIÉES ── */
+var currentValidatingEvent=null;
+
+function renderPlannedSessions(){
+  var el=document.getElementById('ath-planned-sessions');
+  if(!el) return;
+  var a=athletes[0];if(!a){el.innerHTML='';return;}
+  var today=todayISO();
+  var weekAhead=new Date();weekAhead.setDate(weekAhead.getDate()+7);
+  var weekAheadISO=weekAhead.toISOString().split('T')[0];
+  // Séances planifiées dans les 7 prochains jours pour ce groupe
+  var planned=calEvents.filter(function(ev){
+    var d=String(ev.date).split('T')[0];
+    return d>=today&&d<=weekAheadISO;
+  });
+  // Filtrer par groupe de l'athlète
+  var athGroupIds=groupes.filter(function(g){return(g.memberIds||[]).indexOf(a.id)>-1;}).map(function(g){return g.id;});
+  planned=planned.filter(function(ev){return !ev.groupe_id||athGroupIds.indexOf(ev.groupe_id)>-1;});
+  // Exclure les séances déjà validées ce jour-là
+  var seancesDates=(seances[a.id]||[]).map(function(s){return String(s.date).split('T')[0];});
+  if(!planned.length){
+    el.innerHTML='<div class="card" style="background:var(--creme);border-style:dashed;box-shadow:none;text-align:center;color:var(--gris2);padding:1.25rem"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;margin-right:6px;vertical-align:middle"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Aucune séance programmée pour les 7 prochains jours</div>';
+    return;
+  }
+  el.innerHTML=planned.map(function(ev){
+    var d=String(ev.date).split('T')[0];
+    var alreadyDone=seancesDates.indexOf(d)>-1;
+    var c=typeColor(ev.type);
+    return'<div class="card" style="border-left:3px solid var(--rouge);margin-bottom:.75rem">'
+      +'<div class="row btwn wrap" style="gap:8px;margin-bottom:8px">'
+        +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:16px">'+esc(ev.titre||ev.type)+'</div>'
+        +'<div class="txs" style="margin-top:2px">'+fmtDate(d)+' · <span class="tag '+c+'" style="font-size:10px">'+esc(ev.type)+'</span>'+(ev.duree?' · '+ev.duree+' min':'')+(ev.dist?' · '+ev.dist+' km':'')+'</div></div>'
+        +(alreadyDone
+          ?'<span class="tag teal">✓ Validée</span>'
+          :'<button class="btn primary sm" onclick="openValidateModal(\''+ev.id+'\')">→ Valider</button>'
+        )
+      +'</div>'
+      +(ev.description?'<div class="tsm" style="color:var(--gris2)">'+esc(ev.description)+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+function openValidateModal(evId){
+  currentValidatingEvent=calEvents.find(function(e){return e.id===evId;});
+  if(!currentValidatingEvent)return;
+  var ev=currentValidatingEvent;
+  // Remplir les infos de la séance planifiée
+  document.getElementById('vs-planned-info').innerHTML=
+    '<div class="row wrap" style="gap:6px;margin-bottom:6px"><span class="tag '+typeColor(ev.type)+'">'+esc(ev.type)+'</span><span class="txs">'+fmtDate(String(ev.date).split('T')[0])+'</span></div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">'+esc(ev.titre||ev.type)+'</div>'
+    +'<div class="txs">'+(ev.duree?ev.duree+' min ':'')+(ev.dist?'· '+ev.dist+' km':'')+'</div>'
+    +(ev.description?'<div class="tsm" style="margin-top:6px">'+esc(ev.description)+'</div>':'');
+  // Vider les champs athlète
+  ['vs-embarcation','vs-meteo'].forEach(function(id){document.getElementById(id).value='';});
+  ['vs-rpe','vs-fc','vs-allure','vs-notes'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('validate-session-modal').style.display='flex';
+}
+function closeValidateModal(){
+  document.getElementById('validate-session-modal').style.display='none';
+  currentValidatingEvent=null;
+}
+
+async function validateSession(){
+  if(!currentValidatingEvent)return;
+  var ev=currentValidatingEvent;
+  var a=athletes[0];if(!a)return;
+  var btn=document.getElementById('vs-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
+  var data={
+    athlete_id:a.id,
+    date:String(ev.date).split('T')[0],
+    type:ev.type,
+    duree:ev.duree||null,
+    dist:ev.dist||null,
+    fc:document.getElementById('vs-fc').value||null,
+    rpe:document.getElementById('vs-rpe').value||null,
+    embarcation:document.getElementById('vs-embarcation').value||null,
+    meteo:document.getElementById('vs-meteo').value||null,
+    notes:document.getElementById('vs-notes').value||null,
+    allure:document.getElementById('vs-allure').value||null
+  };
+  var {data:ns,error}=await sb.from('seances').insert(data).select().single();
+  btn.disabled=false;btn.innerHTML='✓ Valider la séance';
+  if(error){showAlert('vs-alert',error.message,'error');return;}
+  if(!seances[a.id])seances[a.id]=[];
+  seances[a.id].push(ns);seances[a.id].sort(function(a,b){return a.date<b.date?-1:1;});
+  closeValidateModal();
+  renderAthleteView();
+}
 async function saveOnboarding(){
   var ov=document.getElementById('ob-overlay');
   var userId=(currentUser&&currentUser.id)||(ov&&ov.dataset.userId);
