@@ -776,6 +776,8 @@ async function initApp(user){
   }
   if(!profile){alert('Erreur : profil introuvable.');return;}
   currentProfile=profile;
+  // Sauvegarder l'utilisateur courant immédiatement
+  currentUser=user;
 
   // Pour les athlètes : créer la fiche si elle n'existe pas
   if(currentProfile.role==='athlete'){
@@ -831,6 +833,7 @@ async function initApp(user){
           +'<div style="text-align:center;margin-top:12px"><button onclick="skipOnboarding()" style="background:none;border:none;font-size:12px;color:rgba(255,255,255,.35);cursor:pointer">Passer cette étape</button></div>'
         +'</div>'
       +'</div>';
+      obDiv.dataset.userId=user.id;
       document.body.appendChild(obDiv);
       return;
     }
@@ -1520,6 +1523,9 @@ function renderTable(sc){
 
 /* ── ONBOARDING ATHLÈTE ── */
 async function saveOnboarding(){
+  var ov=document.getElementById('ob-overlay');
+  var userId=(currentUser&&currentUser.id)||(ov&&ov.dataset.userId);
+  if(!userId){alert('Erreur: session expirée, reconnectez-vous.');return;}
   var btn=document.querySelector('#ob-overlay button');
   if(btn){btn.disabled=true;btn.innerHTML='Enregistrement...';}
   var dob=document.getElementById('ob-dob').value||null;
@@ -1527,13 +1533,9 @@ async function saveOnboarding(){
   var taille=document.getElementById('ob-taille').value?parseFloat(document.getElementById('ob-taille').value):null;
   var objectif=document.getElementById('ob-objectif').value.trim()||null;
   var {data:rData,error}=await sb.rpc('update_athlete_fiche',{
-    p_user_id:currentUser.id,
-    p_dob:dob,
-    p_poids:poids,
-    p_taille:taille,
-    p_niveau:'Complété',
-    p_discipline:null,
-    p_objectif:objectif
+    p_user_id:userId,
+    p_dob:dob,p_poids:poids,p_taille:taille,
+    p_niveau:'Complété',p_discipline:null,p_objectif:objectif
   });
   if(btn){btn.disabled=false;btn.innerHTML='→ Accéder à l\'application';}
   if(error){
@@ -1541,24 +1543,23 @@ async function saveOnboarding(){
     if(al){al.style.display='block';al.textContent=error.message;}
     return;
   }
-  localStorage.setItem('ob_done_'+currentUser.id,'1');
-  var ov=document.getElementById('ob-overlay');
+  localStorage.setItem('ob_done_'+userId,'1');
   if(ov) ov.remove();
-  onboardingShown=false;
-  onboardingActive=false;
-  appInitialized=false;
-  // Recharger les données fraîches depuis Supabase
+  onboardingShown=false;onboardingActive=false;appInitialized=false;
   athletes=[];seances={};
   await finishInit();
 }
 
 async function skipOnboarding(){
-  localStorage.setItem('ob_done_'+currentUser.id,'1');
-  await sb.rpc('update_athlete_fiche',{
-    p_user_id:currentUser.id,
-    p_niveau:'Complété',
-    p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
-  });
+  var ov=document.getElementById('ob-overlay');
+  var userId=(currentUser&&currentUser.id)||(ov&&ov.dataset.userId);
+  if(userId){
+    localStorage.setItem('ob_done_'+userId,'1');
+    await sb.rpc('update_athlete_fiche',{
+      p_user_id:userId,p_niveau:'Complété',
+      p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
+    });
+  }
   var ov=document.getElementById('ob-overlay');
   if(ov) ov.remove();
   onboardingActive=false;
