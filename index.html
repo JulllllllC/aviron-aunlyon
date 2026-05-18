@@ -1394,7 +1394,8 @@ function calDayHTML(iso,today){
     for(var i=0;i<Math.min(prevus.length,2);i++){
       var ev=prevus[i],c=typeColor(ev.type);
       var done=getRealisesForDate(iso).filter(function(r){return r.seance.type===ev.type;}).length;
-      html+='<div class="cal-prevu bg-'+c+'" onclick="showEventDetail(\''+ev.id+'\')" title="'+esc(ev.titre||ev.type)+'">'+esc(ev.titre||ev.type)+(done?'<span style="float:right;font-size:9px;background:var(--green);color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px">✓'+done+'</span>':'')+'</div>';
+      var alldayStyle=ev.allday?';border-left:3px solid var(--purple)':'';
+      html+='<div class="cal-prevu bg-'+c+'" onclick="showEventDetail(\''+ev.id+'\')" title="'+esc(ev.titre||ev.type)+'" style="'+alldayStyle+'">'+(ev.allday?'🏆 ':'')+esc(ev.titre||ev.type)+(done?'<span style="float:right;font-size:9px;background:var(--green);color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px">✓'+done+'</span>':'')+'</div>';
     }
     if(prevus.length>2)html+='<div class="txs" style="font-size:9px;padding:0 2px">+'+(prevus.length-2)+'</div>';
   }
@@ -1460,8 +1461,13 @@ function openEventForm(iso,eid){
       +'<button class="btn sm primary" onclick="loadTemplate()" style="flex-shrink:0;font-size:11px;padding:5px 10px">Charger</button>'
     +'</div>':'')
     +'<div class="fg g2" style="margin-bottom:14px"><div class="field"><label>Date *</label><input type="date" id="ev-date" value="'+(ev?String(ev.date).split('T')[0]:(iso||todayISO()))+'"></div><div class="field"><label>Type</label><select id="ev-type">'+topts+'</select></div></div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--creme);border-radius:var(--rs);cursor:pointer" onclick="toggleAllDay()">'
+      +'<input type="checkbox" id="ev-allday" style="width:16px;height:16px;cursor:pointer;accent-color:var(--rouge)"'+(ev&&ev.allday?' checked':'')+'>'
+      +'<label for="ev-allday" style="font-size:13px;font-weight:600;cursor:pointer;color:var(--noir)">Journée entière</label>'
+      +'<span style="font-size:12px;color:var(--gris2)">(compétition, stage, événement)</span>'
+    +'</div>'
+    +'<div id="ev-duration-fields"><div class="fg g2"><div class="field"><label>Durée (min)</label><input type="number" id="ev-duree" value="'+(ev?ev.duree:'')+'" placeholder="90"></div><div class="field"><label>Distance prévue (km)</label><input type="number" id="ev-dist" value="'+(ev?ev.dist:'')+'" placeholder="15" step="0.1"></div></div></div>'
     +'<div class="fg g2"><div class="field"><label>Titre</label><input type="text" id="ev-titre" value="'+(ev?esc(ev.titre||''):'')+'" placeholder="Ex : Sortie technique..."></div><div class="field"><label>Groupe cible</label><select id="ev-group">'+gopts+'</select></div></div>'
-    +'<div class="fg g2"><div class="field"><label>Durée (min)</label><input type="number" id="ev-duree" value="'+(ev?ev.duree:'')+'" placeholder="90"></div><div class="field"><label>Distance prévue (km)</label><input type="number" id="ev-dist" value="'+(ev?ev.dist:'')+'" placeholder="15" step="0.1"></div></div>'
     +'<div class="field" style="margin-bottom:12px"><label>Description / consignes</label><textarea id="ev-desc" placeholder="Objectifs, points d\'attention...">'+( ev?esc(ev.description||''):'')+'</textarea></div>'
     +'<div class="form-section-title" style="margin-top:14px"><span>Étapes</span><div style="display:flex;gap:6px"><button class="btn sm" onclick="addStep()" style="font-size:11px;padding:4px 10px">+ Étape</button></div></div>'
     +'<div id="steps-container" class="steps-list"></div>'
@@ -1475,8 +1481,24 @@ function openEventForm(iso,eid){
   document.getElementById('ev-modal-title').textContent=eid?'Modifier la séance':'Programmer une séance';
   document.getElementById('ev-modal-body').innerHTML=html;
   renderSteps();renderAttachList();
+  // Initialiser l'état journée entière
+  if(ev&&ev.allday) toggleAllDay(true);
   document.getElementById('event-modal').style.display='flex';
 }
+function toggleAllDay(force){
+  var cb=document.getElementById('ev-allday');
+  var fields=document.getElementById('ev-duration-fields');
+  if(!cb||!fields)return;
+  if(force!==undefined)cb.checked=force;
+  if(cb.checked){
+    fields.style.display='none';
+    document.getElementById('ev-duree').value='';
+    document.getElementById('ev-dist').value='';
+  } else {
+    fields.style.display='block';
+  }
+}
+
 function closeEventModal(){document.getElementById('event-modal').style.display='none';editEvId=null;pendingSteps=[];pendingAttachments=[];}
 
 function loadTemplate(){
@@ -1602,7 +1624,8 @@ function renderAttachList(){var el=document.getElementById('attach-list');if(!el
 async function saveEvent(){
   var date=document.getElementById('ev-date').value;
   if(!date){showAlert('ev-alert','La date est obligatoire.','error');return;}
-  var data={date,type:document.getElementById('ev-type').value,titre:document.getElementById('ev-titre').value.trim(),groupe_id:document.getElementById('ev-group').value||null,duree:document.getElementById('ev-duree').value||null,dist:document.getElementById('ev-dist').value||null,description:document.getElementById('ev-desc').value.trim(),steps:JSON.parse(JSON.stringify(pendingSteps)),attachments:JSON.parse(JSON.stringify(pendingAttachments))};
+  var allday=document.getElementById('ev-allday')&&document.getElementById('ev-allday').checked;
+  var data={date,type:document.getElementById('ev-type').value,titre:document.getElementById('ev-titre').value.trim(),groupe_id:document.getElementById('ev-group').value||null,duree:allday?null:(document.getElementById('ev-duree').value||null),dist:allday?null:(document.getElementById('ev-dist').value||null),description:document.getElementById('ev-desc').value.trim(),steps:JSON.parse(JSON.stringify(pendingSteps)),attachments:JSON.parse(JSON.stringify(pendingAttachments)),allday:allday};
   var error;
   if(editEvId){var res=await sb.from('cal_events').update(data).eq('id',editEvId);error=res.error;if(!error){var ev=calEvents.find(function(e){return e.id===editEvId;});if(ev)Object.assign(ev,data);}}
   else{data.coach_id=currentUser.id;var res=await sb.from('cal_events').insert(data).select().single();error=res.error;if(!error)calEvents.push(res.data);}
