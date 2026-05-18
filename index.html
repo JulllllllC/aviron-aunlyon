@@ -653,6 +653,15 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
     <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeTypeForm()">Annuler</button><button class="btn primary sm" onclick="saveType()">✓ Enregistrer</button></div>
   </div>
   <div id="types-list"></div>
+
+  <!-- Bibliothèque de séances -->
+  <div style="margin-top:2rem">
+    <div class="ph row btwn" style="margin-bottom:1rem">
+      <div><h1>Bibliothèque de <span>séances</span></h1><div class="sep-rouge"></div><p>Modèles de séances réutilisables dans le calendrier</p></div>
+      <button class="btn sm" onclick="loadTemplatesUI()">↺ Actualiser</button>
+    </div>
+    <div id="templates-list"></div>
+  </div>
 </div>
 
 </main>
@@ -953,7 +962,7 @@ function switchTab(t){
   else if(t==='athlete'){renderAthleteView();document.getElementById('s-date').value=todayISO();}
   else if(t==='calendar'){renderCalendar();}
   else if(t==='analyse'){initAnalyse();}
-  else if(t==='settings'){renderTypes();}
+  else if(t==='settings'){renderTypes();loadTemplatesUI();}
   else if(t==='admin'){loadAdminUsers();}
 }
 
@@ -1005,6 +1014,8 @@ async function loadData(){
     groupes.forEach(function(g){g.memberIds=(gm||[]).filter(function(m){return m.groupe_id===g.id;}).map(function(m){return m.athlete_id;});});
     var {data:ev}=await sb.from('cal_events').select('*').order('date');
     calEvents=ev||[];
+    // Charger les modèles de séances
+    await loadTemplates();
   }
 }
 
@@ -1428,6 +1439,8 @@ function renderWeekView(today){
 }
 
 /* ── MODALS CAL ── */
+var seanceTemplates=[];
+
 function openEventForm(iso,eid){
   editEvId=eid||null;pendingSteps=[];pendingAttachments=[];
   var ev=eid?calEvents.find(function(e){return e.id===eid;}):null;
@@ -1435,15 +1448,29 @@ function openEventForm(iso,eid){
   var types=sessionTypes;
   var topts=types.map(function(t){return'<option value="'+esc(t.nom)+'"'+(ev&&ev.type===t.nom?' selected':'')+'>'+esc(t.nom)+'</option>';}).join('');
   var gopts='<option value="">— Tous les groupes —</option>'+groupes.map(function(g){return'<option value="'+g.id+'"'+(ev&&ev.groupe_id===g.id?' selected':'')+'>'+esc(g.nom)+'</option>';}).join('');
-  var html='<div class="fg g2" style="margin-bottom:14px"><div class="field"><label>Date *</label><input type="date" id="ev-date" value="'+(ev?String(ev.date).split('T')[0]:(iso||todayISO()))+'"></div><div class="field"><label>Type</label><select id="ev-type">'+topts+'</select></div></div>'
+  // Options modèles
+  var tmplOpts=seanceTemplates.length
+    ?'<option value="">— Choisir un modèle —</option>'+seanceTemplates.map(function(t){return'<option value="'+t.id+'">'+esc(t.nom)+'</option>';}).join('')
+    :'<option value="">Aucun modèle enregistré</option>';
+  var html=
+    // Barre modèles
+    (seanceTemplates.length?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 12px;background:var(--creme);border-radius:var(--rs);border:1px solid var(--gris4)">'
+      +'<svg width="14" height="14" fill="none" stroke="var(--rouge)" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+      +'<select id="ev-template" style="flex:1;font-size:13px">'+tmplOpts+'</select>'
+      +'<button class="btn sm primary" onclick="loadTemplate()" style="flex-shrink:0;font-size:11px;padding:5px 10px">Charger</button>'
+    +'</div>':'')
+    +'<div class="fg g2" style="margin-bottom:14px"><div class="field"><label>Date *</label><input type="date" id="ev-date" value="'+(ev?String(ev.date).split('T')[0]:(iso||todayISO()))+'"></div><div class="field"><label>Type</label><select id="ev-type">'+topts+'</select></div></div>'
     +'<div class="fg g2"><div class="field"><label>Titre</label><input type="text" id="ev-titre" value="'+(ev?esc(ev.titre||''):'')+'" placeholder="Ex : Sortie technique..."></div><div class="field"><label>Groupe cible</label><select id="ev-group">'+gopts+'</select></div></div>'
     +'<div class="fg g2"><div class="field"><label>Durée (min)</label><input type="number" id="ev-duree" value="'+(ev?ev.duree:'')+'" placeholder="90"></div><div class="field"><label>Distance prévue (km)</label><input type="number" id="ev-dist" value="'+(ev?ev.dist:'')+'" placeholder="15" step="0.1"></div></div>'
     +'<div class="field" style="margin-bottom:12px"><label>Description / consignes</label><textarea id="ev-desc" placeholder="Objectifs, points d\'attention...">'+( ev?esc(ev.description||''):'')+'</textarea></div>'
-    +'<div class="form-section-title" style="margin-top:14px"><span>Étapes</span><button class="btn sm" onclick="addStep()" style="font-size:11px;padding:4px 10px">+ Étape</button></div>'
+    +'<div class="form-section-title" style="margin-top:14px"><span>Étapes</span><div style="display:flex;gap:6px"><button class="btn sm" onclick="addStep()" style="font-size:11px;padding:4px 10px">+ Étape</button></div></div>'
     +'<div id="steps-container" class="steps-list"></div>'
     +'<div class="field" style="margin:14px 0 10px"><label>Pièces jointes</label><input type="file" id="ev-file" multiple accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" style="padding:6px" onchange="handleFiles(event)"><div id="attach-list" style="margin-top:6px"></div></div>'
     +'<div id="ev-alert" class="alert"></div>'
-    +'<div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeEventModal()">Annuler</button><button class="btn primary sm" onclick="saveEvent()">✓ Enregistrer</button></div>';
+    +'<div class="row btwn" style="gap:8px">'
+      +'<button class="btn sm" onclick="saveAsTemplate()" style="font-size:11px">💾 Sauvegarder comme modèle</button>'
+      +'<div class="row" style="gap:8px"><button class="btn sm" onclick="closeEventModal()">Annuler</button><button class="btn primary sm" onclick="saveEvent()">✓ Enregistrer</button></div>'
+    +'</div>';
   if(ev&&ev.attachments)pendingAttachments=JSON.parse(JSON.stringify(ev.attachments));
   document.getElementById('ev-modal-title').textContent=eid?'Modifier la séance':'Programmer une séance';
   document.getElementById('ev-modal-body').innerHTML=html;
@@ -1451,6 +1478,63 @@ function openEventForm(iso,eid){
   document.getElementById('event-modal').style.display='flex';
 }
 function closeEventModal(){document.getElementById('event-modal').style.display='none';editEvId=null;pendingSteps=[];pendingAttachments=[];}
+
+function loadTemplate(){
+  var id=document.getElementById('ev-template').value;
+  if(!id)return;
+  var t=seanceTemplates.find(function(x){return x.id===id;});
+  if(!t)return;
+  // Remplir les champs depuis le modèle
+  document.getElementById('ev-titre').value=t.nom;
+  document.getElementById('ev-duree').value=t.duree||'';
+  document.getElementById('ev-dist').value=t.dist||'';
+  var desc=document.getElementById('ev-desc');if(desc)desc.value=t.description||'';
+  // Charger le type
+  var typesel=document.getElementById('ev-type');
+  if(typesel&&t.type)typesel.value=t.type;
+  // Charger les étapes
+  pendingSteps=t.steps?JSON.parse(JSON.stringify(t.steps)):[];
+  renderSteps();
+}
+
+async function saveAsTemplate(){
+  var nom=document.getElementById('ev-titre').value.trim()||document.getElementById('ev-type').value;
+  if(!nom){showAlert('ev-alert','Donnez un titre à la séance avant de la sauvegarder comme modèle.','info');return;}
+  var data={
+    coach_id:currentUser.id,
+    nom:nom,
+    type:document.getElementById('ev-type').value,
+    duree:document.getElementById('ev-duree').value||null,
+    dist:document.getElementById('ev-dist').value||null,
+    description:document.getElementById('ev-desc').value.trim()||null,
+    steps:JSON.parse(JSON.stringify(pendingSteps))
+  };
+  var {data:nt,error}=await sb.from('seance_templates').insert(data).select().single();
+  if(error){showAlert('ev-alert',error.message,'error');return;}
+  seanceTemplates.push(nt);
+  showAlert('ev-alert','Modèle "'+esc(nom)+'" sauvegardé !','success',3000);
+}
+
+function loadTemplatesUI(){
+  var el=document.getElementById('templates-list');
+  if(!el)return;
+  if(!seanceTemplates.length){el.innerHTML='<div class="empty">Aucun modèle — créez une séance dans le calendrier et cliquez "💾 Sauvegarder comme modèle"</div>';return;}
+  el.innerHTML=seanceTemplates.map(function(t){
+    return'<div style="background:var(--surface);border:1px solid var(--gris4);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:.75rem;box-shadow:var(--sh);display:flex;align-items:center;gap:10px">'
+      +'<span class="tag '+typeColor(t.type)+'">'+esc(t.type||'—')+'</span>'
+      +'<div style="flex:1"><strong>'+esc(t.nom)+'</strong>'+(t.duree?' · '+t.duree+' min':'')+(t.dist?' · '+t.dist+' km':'')+(t.steps&&t.steps.length?' · '+t.steps.length+' étapes':'')+'</div>'
+      +'<button class="btn sm danger icon" onclick="deleteTemplate(\''+t.id+'\')" title="Supprimer">✕</button>'
+    +'</div>';
+  }).join('');
+}
+
+async function deleteTemplate(id){
+  if(!confirm('Supprimer ce modèle ?'))return;
+  var {error}=await sb.from('seance_templates').delete().eq('id',id);
+  if(error){alert(error.message);return;}
+  seanceTemplates=seanceTemplates.filter(function(x){return x.id!==id;});
+  loadTemplatesUI();
+}
 
 function addStep(data){var d=data||{},id='step_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);pendingSteps.push({id,stype:d.stype||'Échauffement',label:d.label||'',duree:d.duree||'',dist:d.dist||'',consignes:d.consignes||''});renderSteps();}
 var onboardingShown=false;
