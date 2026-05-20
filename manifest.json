@@ -2,7 +2,8 @@
   "name": "AvironCoach — Union Nautique de Lyon",
   "short_name": "AvironCoach",
   "description": "Application de suivi d'entraînement aviron",
-  "start_url": "/",
+  "start_url": "/aviron-aunlyon/",
+  "scope": "/aviron-aunlyon/",
   "display": "standalone",
   "background_color": "#111110",
   "theme_color": "#111110",
@@ -20,8 +21,13 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
   "categories": ["sports", "health", "fitness"]
 }
