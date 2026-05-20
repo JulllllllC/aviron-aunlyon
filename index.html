@@ -1098,6 +1098,7 @@ function renderAthletesList(list){
   el.innerHTML=list.map(function(a){
     var sc=seances[a.id]||[];
     var ns=sc.length,km=sc.reduce(function(s,x){return s+(parseFloat(x.dist)||0);},0);
+    var scWithDist=sc.filter(function(x){return parseFloat(x.dist)>0;});
     var last=sc.length?sc[sc.length-1]:null;
     // Groupes de l'athlète
     var athGroupes=groupes.filter(function(g){return(g.memberIds||[]).indexOf(a.id)>-1;});
@@ -1109,7 +1110,7 @@ function renderAthletesList(list){
       +'</div>'
       +(athGroupes.length?'<div style="margin-top:4px">'+athGroupes.map(function(g){return'<span class="tag '+g.couleur+'" style="font-size:10px">'+esc(g.nom)+'</span>';}).join('')+'</div>':'')
       +'</div></div>'
-      +'<div class="stats3"><div class="sbox"><div class="sval">'+ns+'</div><div class="slbl">séances</div></div><div class="sbox"><div class="sval">'+km.toFixed(1)+'</div><div class="slbl">km</div></div><div class="sbox"><div class="sval">'+(ns>0?(km/ns).toFixed(1):'—')+'</div><div class="slbl">km/séance</div></div></div>'
+      +'<div class="stats3"><div class="sbox"><div class="sval">'+ns+'</div><div class="slbl">séances</div></div><div class="sbox"><div class="sval">'+km.toFixed(1)+'</div><div class="slbl">km</div></div><div class="sbox"><div class="sval">'+(scWithDist.length>0?(km/scWithDist.length).toFixed(1):'—')+'</div><div class="slbl">km/séance</div></div></div>'
       +(a.objectif?'<div class="tsm" style="margin-bottom:10px">'+esc(a.objectif)+'</div>':'')
       +(last?'<div class="txs" style="margin-bottom:10px">Dernière séance : '+fmtDate(last.date)+' — <span class="tag '+typeColor(last.type)+'" style="font-size:10px">'+esc(last.type)+'</span></div>':'')
       +'<div class="sep"></div><div class="row btwn">'
@@ -1715,7 +1716,7 @@ function renderAnalyse(){
   body.style.display='block';empty.style.display='none';
   var wdata=buildWeekMap(sc);
   // KPIs
-  var km=0,duree=0,rpeSum=0,rpeN=0;sc.forEach(function(s){km+=parseFloat(s.dist)||0;duree+=parseFloat(s.duree)||0;if(s.rpe){rpeSum+=parseFloat(s.rpe);rpeN++;}});
+  var km=0,duree=0,rpeSum=0,rpeN=0,scWithDist=0;sc.forEach(function(s){km+=parseFloat(s.dist)||0;duree+=parseFloat(s.duree)||0;if(parseFloat(s.dist)>0)scWithDist++;if(s.rpe){rpeSum+=parseFloat(s.rpe);rpeN++;}});
   document.getElementById('an-kpis').innerHTML=[{val:sc.length,lbl:'Séances'},{val:km.toFixed(1)+' km',lbl:'Distance'},{val:Math.round(duree/60*10)/10+' h',lbl:'Temps'},{val:rpeN?Math.round(rpeSum/rpeN*10)/10+'/10':'—',lbl:'RPE moyen'}].map(function(k){return'<div class="an-kpi"><div class="an-kpi-val">'+k.val+'</div><div class="an-kpi-lbl">'+k.lbl+'</div></div>';}).join('');
   renderBarChart('an-chart-vol',wdata,'km','#1D9E75');
   renderChargeChart('an-chart-charge',wdata);
