@@ -958,7 +958,7 @@ function switchTab(t){
   if(sec) sec.classList.add('active');
   // Scroll en haut sur mobile
   window.scrollTo(0,0);
-  if(t==='coach'){b.className='nbadge coach';b.style.cssText='';b.textContent='Vue coach';switchCoachTab('athletes');}
+  if(t==='coach'){switchCoachTab('athletes');}
   else if(t==='athlete'){renderAthleteView();document.getElementById('s-date').value=todayISO();}
   else if(t==='calendar'){renderCalendar();}
   else if(t==='analyse'){initAnalyse();}
