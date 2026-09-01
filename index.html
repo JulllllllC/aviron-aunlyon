@@ -1636,8 +1636,13 @@ async function saveEvent(){
   closeEventModal();renderCalendar();
 }
 
-function showEventDetail(id){
+async function showEventDetail(id){
   var ev=calEvents.find(function(e){return e.id===id;});if(!ev)return;
+  // Charger les attachments uniquement si pas encore chargés
+  if(!ev.attachments){
+    var {data:full}=await sb.from('cal_events').select('attachments').eq('id',id).single();
+    ev.attachments=(full&&full.attachments)?full.attachments:[];
+  }
   var isCoach=(currentProfile.role!=='athlete');
   var html='<div class="prevu-block"><div class="row wrap" style="gap:6px;margin-bottom:8px"><span class="tag '+typeColor(ev.type)+'">'+esc(ev.type)+'</span><span class="txs">'+fmtDate(ev.date)+(ev.heure?' à <strong>'+ev.heure+'</strong>':'')+'</span>'+(ev.allday?'<span class="tag purple">Journée entière</span>':'')+'</div>'+(ev.titre?'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">'+esc(ev.titre)+'</div>':'')+'<div class="txs">'+(ev.duree?ev.duree+' min · ':'')+(ev.dist?ev.dist+' km':'')+'</div>'+(ev.description?'<div class="tsm" style="margin-top:6px;line-height:1.5">'+esc(ev.description)+'</div>':'')+'</div>';
   if(ev.steps&&ev.steps.length){html+='<div class="stitle" style="margin-top:12px">Programme</div><div class="steps-list">'+ev.steps.map(function(s,i){var meta=[];if(s.duree)meta.push(s.duree+' min');if(s.dist)meta.push(s.dist+' km');return'<div class="step-row"><div class="step-num">'+(i+1)+'</div><div class="step-body"><div class="row wrap" style="gap:6px;margin-bottom:4px"><span class="step-tag '+(STEP_COLORS[s.stype]||'autre')+'">'+esc(s.stype)+'</span>'+(s.label?'<strong>'+esc(s.label)+'</strong>':'')+'</div>'+(meta.length?'<div class="txs">'+meta.join(' · ')+'</div>':'')+(s.consignes?'<div class="tsm" style="line-height:1.5">'+esc(s.consignes)+'</div>':'')+'</div></div>';}).join('')+'</div>';}
