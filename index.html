@@ -994,7 +994,7 @@ async function loadData(){
       groupes=[];
     }
     // Charger tous les événements — filtrés par groupe ou sans groupe
-    var {data:ev}=await sb.from('cal_events').select('*').order('date');
+    var {data:ev}=await sb.from('cal_events').select('id,coach_id,groupe_id,date,type,titre,duree,dist,description,steps,allday,heure,created_at').order('date');
     calEvents=(ev||[]).filter(function(e){
       // Événements sans groupe = visibles par tous
       if(!e.groupe_id) return true;
@@ -1012,7 +1012,7 @@ async function loadData(){
     groupes=grp||[];
     var {data:gm}=await sb.from('groupe_membres').select('*');
     groupes.forEach(function(g){g.memberIds=(gm||[]).filter(function(m){return m.groupe_id===g.id;}).map(function(m){return m.athlete_id;});});
-    var {data:ev}=await sb.from('cal_events').select('*').order('date');
+    var {data:ev}=await sb.from('cal_events').select('id,coach_id,groupe_id,date,type,titre,duree,dist,description,steps,allday,heure,created_at').order('date');
     calEvents=ev||[];
     // Charger les modèles de séances
     var {data:tmpl}=await sb.from('seance_templates').select('*').eq('coach_id',currentUser.id).order('nom');
