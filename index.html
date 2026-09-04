@@ -1621,8 +1621,40 @@ function renderSteps(){
     return'<div class="step-row" draggable="true" id="sr_'+s.id+'" ondragstart="dragStart(event,\''+s.id+'\')" ondragover="dragOver(event)" ondrop="dragDrop(event,\''+s.id+'\')" ondragend="dragEnd(event)" style="cursor:grab"><div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;margin-top:2px;color:var(--gris3);cursor:grab;padding-right:4px">⠿</div><div class="step-num">'+(i+1)+'</div><div class="step-body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div class="field"><label>Type</label><select onchange="updateStep(\''+s.id+'\',\'stype\',this.value)">'+typeOpts+'</select></div><div class="field"><label>Intitulé</label><input type="text" value="'+esc(s.label)+'" placeholder="6×500m" onchange="updateStep(\''+s.id+'\',\'label\',this.value)"></div><div class="field" style="grid-column:1/-1"><label>Consignes</label><textarea style="min-height:46px" placeholder="FC cible, allure..." onchange="updateStep(\''+s.id+'\',\'consignes\',this.value)">'+esc(s.consignes)+'</textarea></div><div class="field"><label>Durée (min)</label><input type="number" value="'+esc(s.duree)+'" placeholder="20" onchange="updateStep(\''+s.id+'\',\'duree\',this.value)"></div><div class="field"><label>Distance (km)</label><input type="number" value="'+esc(s.dist)+'" placeholder="3" step="0.1" onchange="updateStep(\''+s.id+'\',\'dist\',this.value)"></div></div><div style="display:flex;flex-direction:column;gap:4px;align-self:flex-start;flex-shrink:0;margin-top:2px"><button class="btn sm" onclick="duplicateStep(\''+s.id+'\')" title="Copier" style="padding:5px 8px;font-size:11px">⧉</button><button class="btn sm danger icon" onclick="removeStep(\''+s.id+'\')" title="Supprimer">✕</button></div></div>';
   }).join('');
 }
-function handleFiles(e){Array.from(e.target.files).forEach(function(f){if(f.size>5*1024*1024){alert('Fichier trop lourd : '+f.name);return;}var reader=new FileReader();reader.onload=function(ev){pendingAttachments.push({name:f.name,size:f.size,data:ev.target.result});renderAttachList();};reader.readAsDataURL(f);});}
-function renderAttachList(){var el=document.getElementById('attach-list');if(!el)return;if(!pendingAttachments.length){el.innerHTML='';return;}el.innerHTML=pendingAttachments.map(function(a,i){return'<div class="attachment"><div class="att-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;min-width:0"><div class="tsm fw" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name)+'</div><div class="txs">'+fmtSize(a.size)+'</div></div><button class="btn sm danger icon" onclick="pendingAttachments.splice('+i+',1);renderAttachList()">✕</button></div>';}).join('');}
+async function handleFiles(e){
+  var files=Array.from(e.target.files);
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    if(f.size>20*1024*1024){alert('Fichier trop lourd : '+f.name+' (max 20MB)');continue;}
+    // Upload vers Supabase Storage
+    var filePath='cal-attachments/'+Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    var {data:upload,error:upErr}=await sb.storage.from('attachments').upload(filePath,f,{upsert:true});
+    if(upErr){alert('Erreur upload : '+upErr.message);continue;}
+    // Récupérer l'URL publique
+    var {data:urlData}=sb.storage.from('attachments').getPublicUrl(filePath);
+    pendingAttachments.push({name:f.name,size:f.size,url:urlData.publicUrl,path:filePath});
+    renderAttachList();
+  }
+}
+function renderAttachList(){
+  var el=document.getElementById('attach-list');if(!el)return;
+  if(!pendingAttachments.length){el.innerHTML='';return;}
+  el.innerHTML=pendingAttachments.map(function(a,i){
+    return'<div class="attachment"><div class="att-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
+      +'<div style="flex:1;min-width:0"><div class="tsm fw" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name)+'</div>'
+      +'<div class="txs">'+(a.url?'✓ Uploadé · ':'')+fmtSize(a.size)+'</div></div>'
+      +'<button class="btn sm danger icon" onclick="removeAttachment('+i+')">✕</button>'
+    +'</div>';
+  }).join('');
+}
+
+async function removeAttachment(i){
+  var a=pendingAttachments[i];
+  // Supprimer du Storage si uploadé
+  if(a.path) await sb.storage.from('attachments').remove([a.path]);
+  pendingAttachments.splice(i,1);
+  renderAttachList();
+}
 
 async function saveEvent(){
   var date=document.getElementById('ev-date').value;
@@ -1646,7 +1678,7 @@ async function showEventDetail(id){
   var isCoach=(currentProfile.role!=='athlete');
   var html='<div class="prevu-block"><div class="row wrap" style="gap:6px;margin-bottom:8px"><span class="tag '+typeColor(ev.type)+'">'+esc(ev.type)+'</span><span class="txs">'+fmtDate(ev.date)+(ev.heure?' à <strong>'+ev.heure+'</strong>':'')+'</span>'+(ev.allday?'<span class="tag purple">Journée entière</span>':'')+'</div>'+(ev.titre?'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">'+esc(ev.titre)+'</div>':'')+'<div class="txs">'+(ev.duree?ev.duree+' min · ':'')+(ev.dist?ev.dist+' km':'')+'</div>'+(ev.description?'<div class="tsm" style="margin-top:6px;line-height:1.5">'+esc(ev.description)+'</div>':'')+'</div>';
   if(ev.steps&&ev.steps.length){html+='<div class="stitle" style="margin-top:12px">Programme</div><div class="steps-list">'+ev.steps.map(function(s,i){var meta=[];if(s.duree)meta.push(s.duree+' min');if(s.dist)meta.push(s.dist+' km');return'<div class="step-row"><div class="step-num">'+(i+1)+'</div><div class="step-body"><div class="row wrap" style="gap:6px;margin-bottom:4px"><span class="step-tag '+(STEP_COLORS[s.stype]||'autre')+'">'+esc(s.stype)+'</span>'+(s.label?'<strong>'+esc(s.label)+'</strong>':'')+'</div>'+(meta.length?'<div class="txs">'+meta.join(' · ')+'</div>':'')+(s.consignes?'<div class="tsm" style="line-height:1.5">'+esc(s.consignes)+'</div>':'')+'</div></div>';}).join('')+'</div>';}
-  if(ev.attachments&&ev.attachments.length){html+='<div class="stitle" style="margin-top:12px">Pièces jointes</div>'+ev.attachments.map(function(a){return'<div class="attachment"><div class="att-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--rouge-dark)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;min-width:0"><div class="tsm fw">'+esc(a.name)+'</div><div class="txs">'+fmtSize(a.size)+'</div></div><a href="'+a.data+'" download="'+esc(a.name)+'" class="btn sm">↓</a></div>';}).join('');}
+  if(ev.attachments&&ev.attachments.length){html+='<div class="stitle" style="margin-top:12px">Pièces jointes</div>'+ev.attachments.map(function(a){var href=a.url||a.data||'#';return'<div class="attachment"><div class="att-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--rouge-dark)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;min-width:0"><div class="tsm fw">'+esc(a.name)+'</div><div class="txs">'+fmtSize(a.size)+'</div></div><a href="'+href+'" target="_blank" class="btn sm">↓ Ouvrir</a></div>';}).join('');}
   if(isCoach)html+='<div class="sep"></div><div class="row" style="justify-content:flex-end;gap:8px"><button class="btn danger sm" onclick="deleteEvent(\''+id+'\')">Supprimer</button><button class="btn sm" onclick="closeDetailModal();openEventForm(null,\''+id+'\')">Modifier</button></div>';
   // Afficher les athlètes ayant validé cette séance
   var evDate=String(ev.date).split('T')[0];
