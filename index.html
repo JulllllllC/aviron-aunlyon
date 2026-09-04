@@ -429,6 +429,7 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
   <div style="display:flex;gap:2px;background:var(--noir);padding:3px;border-radius:8px;margin-bottom:1.5rem;width:fit-content">
     <button class="vtab active" id="coach-tab-ath" onclick="switchCoachTab('athletes')">Athlètes</button>
     <button class="vtab" id="coach-tab-grp" onclick="switchCoachTab('groupes')">Groupes</button>
+    <button class="vtab" id="coach-tab-tmpl" onclick="switchCoachTab('templates')">Bibliothèque</button>
   </div>
 
   <!-- VUE ATHLÈTES -->
@@ -468,6 +469,15 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
       <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn sm" onclick="closeAthleteForm()">Annuler</button><button class="btn primary sm" id="save-ath-btn" onclick="saveAthlete()">✓ Enregistrer</button></div>
     </div>
     <div id="athletes-list"></div>
+  </div>
+
+  <!-- VUE BIBLIOTHÈQUE -->
+  <div id="coach-view-templates" style="display:none">
+    <div class="ph row btwn">
+      <div><h1>Bibliothèque de <span>séances</span></h1><div class="sep-rouge"></div><p>Modèles réutilisables dans le calendrier</p></div>
+      <button class="btn sm" onclick="switchCoachTab('templates')">↺ Actualiser</button>
+    </div>
+    <div id="coach-templates-list"></div>
   </div>
 
   <!-- VUE GROUPES -->
@@ -934,15 +944,18 @@ function buildNavTabs(){
 function switchCoachTab(tab){
   document.getElementById('coach-view-athletes').style.display=tab==='athletes'?'block':'none';
   document.getElementById('coach-view-groupes').style.display=tab==='groupes'?'block':'none';
+  document.getElementById('coach-view-templates').style.display=tab==='templates'?'block':'none';
   document.getElementById('coach-tab-ath').className='vtab'+(tab==='athletes'?' active':'');
   document.getElementById('coach-tab-grp').className='vtab'+(tab==='groupes'?' active':'');
+  document.getElementById('coach-tab-tmpl').className='vtab'+(tab==='templates'?' active':'');
   if(tab==='athletes'){
-    // Remplir le filtre groupes
     var gsel=document.getElementById('ath-filter-group');
     if(gsel) gsel.innerHTML='<option value="">Tous les groupes</option>'+groupes.map(function(g){return'<option value="'+g.id+'">'+esc(g.nom)+'</option>';}).join('');
     renderAthletes();
-  } else {
+  } else if(tab==='groupes'){
     renderGroups();
+  } else if(tab==='templates'){
+    renderCoachTemplates();
   }
 }
 
@@ -1540,7 +1553,63 @@ async function saveAsTemplate(){
   showAlert('ev-alert','Modèle "'+esc(nom)+'" sauvegardé !','success',3000);
 }
 
-function loadTemplatesUI(){
+function renderCoachTemplates(){
+  var el=document.getElementById('coach-templates-list');
+  if(!el)return;
+  if(!seanceTemplates.length){
+    el.innerHTML='<div class="empty">Aucun modèle — créez une séance dans le calendrier et cliquez "💾 Sauvegarder comme modèle"</div>';
+    return;
+  }
+  el.innerHTML=seanceTemplates.map(function(t){
+    var steps=t.steps&&t.steps.length?t.steps:[];
+    return'<div class="card" style="margin-bottom:.75rem">'
+      +'<div class="row btwn wrap" style="gap:8px;margin-bottom:10px">'
+        +'<div class="row" style="gap:8px;flex:1;min-width:0">'
+          +'<span class="tag '+typeColor(t.type)+'">'+esc(t.type||'—')+'</span>'
+          +'<div id="tmpl-name-'+t.id+'" style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:17px;flex:1">'+esc(t.nom)+'</div>'
+        +'</div>'
+        +'<div class="row" style="gap:6px">'
+          +'<button class="btn sm" onclick="renameTemplate(\''+t.id+'\')" title="Renommer">✏</button>'
+          +'<button class="btn sm" onclick="loadTemplateToCalendar(\''+t.id+'\')" title="Utiliser dans le calendrier">📅 Utiliser</button>'
+          +'<button class="btn sm danger icon" onclick="deleteTemplate(\''+t.id+'\')" title="Supprimer">✕</button>'
+        +'</div>'
+      +'</div>'
+      +'<div class="txs" style="margin-bottom:8px">'+(t.duree?t.duree+' min · ':'')+(t.dist?t.dist+' km · ':'')+(steps.length?steps.length+' étape'+(steps.length>1?'s':''):'')+'</div>'
+      +(t.description?'<div class="tsm" style="margin-bottom:8px">'+esc(t.description)+'</div>':'')
+      +(steps.length?'<div class="steps-list" style="margin-top:8px">'+steps.map(function(s,i){return'<div class="step-row" style="padding:8px 10px"><div class="step-num">'+(i+1)+'</div><div class="step-body"><div class="row wrap" style="gap:6px;margin-bottom:2px"><span class="step-tag '+(STEP_COLORS[s.stype]||'autre')+'">'+esc(s.stype||'—')+'</span>'+(s.label?'<strong>'+esc(s.label)+'</strong>':'')+'</div>'+(s.duree||s.dist?'<div class="txs">'+(s.duree?s.duree+' min ':'')+(s.dist?s.dist+' km':'')+'</div>':'')+(s.consignes?'<div class="tsm">'+esc(s.consignes)+'</div>':'')+'</div></div>';}).join('')+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+async function renameTemplate(id){
+  var t=seanceTemplates.find(function(x){return x.id===id;});
+  if(!t)return;
+  var newName=prompt('Nouveau nom pour ce modèle :',t.nom);
+  if(!newName||!newName.trim())return;
+  var {error}=await sb.from('seance_templates').update({nom:newName.trim()}).eq('id',id);
+  if(error){alert('Erreur : '+error.message);return;}
+  t.nom=newName.trim();
+  renderCoachTemplates();
+}
+
+function loadTemplateToCalendar(id){
+  var t=seanceTemplates.find(function(x){return x.id===id;});
+  if(!t)return;
+  // Ouvrir le formulaire calendrier pré-rempli
+  switchTab('calendar');
+  setTimeout(function(){
+    openEventForm(todayISO());
+    setTimeout(function(){
+      document.getElementById('ev-titre').value=t.nom;
+      document.getElementById('ev-duree').value=t.duree||'';
+      document.getElementById('ev-dist').value=t.dist||'';
+      var desc=document.getElementById('ev-desc');if(desc)desc.value=t.description||'';
+      if(t.type){var typesel=document.getElementById('ev-type');if(typesel)typesel.value=t.type;}
+      pendingSteps=t.steps?JSON.parse(JSON.stringify(t.steps)):[];
+      renderSteps();
+    },100);
+  },300);
+}
   var el=document.getElementById('templates-list');
   if(!el)return;
   if(!seanceTemplates.length){el.innerHTML='<div class="empty">Aucun modèle — créez une séance dans le calendrier et cliquez "💾 Sauvegarder comme modèle"</div>';return;}
