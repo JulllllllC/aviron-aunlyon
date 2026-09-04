@@ -1609,7 +1609,7 @@ function loadTemplateToCalendar(id){
       renderSteps();
     },100);
   },300);
-}
+function loadTemplatesUI(){
   var el=document.getElementById('templates-list');
   if(!el)return;
   if(!seanceTemplates.length){el.innerHTML='<div class="empty">Aucun modèle — créez une séance dans le calendrier et cliquez "💾 Sauvegarder comme modèle"</div>';return;}
@@ -1620,6 +1620,11 @@ function loadTemplateToCalendar(id){
       +'<button class="btn sm danger icon" onclick="deleteTemplate(\''+t.id+'\')" title="Supprimer">✕</button>'
     +'</div>';
   }).join('');
+}
+
+async function loadTemplates(){
+  var {data}=await sb.from('seance_templates').select('*').eq('coach_id',currentUser.id).order('nom');
+  seanceTemplates=data||[];
 }
 
 async function deleteTemplate(id){
