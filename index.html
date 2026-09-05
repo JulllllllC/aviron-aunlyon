@@ -275,6 +275,10 @@ input::placeholder,textarea::placeholder{color:var(--gris3)}
 .prevu-block{background:var(--rouge-light);border:1px solid #F0C0C0;border-left:3px solid var(--rouge);border-radius:var(--rs);padding:12px 14px;margin-bottom:10px}
 .realise-block{background:var(--green-light);border:1px solid var(--green-mid);border-left:3px solid var(--green);border-radius:var(--rs);padding:12px 14px;margin-top:10px}
 
+/* HISTORIQUE SÉANCES */
+.si{padding:12px 0;border-bottom:1px solid var(--gris4)}
+.si:last-child{border-bottom:none;padding-bottom:0}
+
 /* ADMIN */
 .admin-user-row{background:var(--surface);border:1px solid var(--gris4);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:.75rem;box-shadow:var(--sh);display:flex;align-items:center;gap:12px}
 
@@ -1483,7 +1487,7 @@ function openEventForm(iso,eid){
       +'<span style="font-size:12px;color:var(--gris2)">(compétition, stage, événement)</span>'
     +'</div>'
     +'<div id="ev-duration-fields"><div class="fg g2"><div class="field"><label>Durée (min)</label><input type="number" id="ev-duree" value="'+(ev?ev.duree:'')+'" placeholder="90"></div><div class="field"><label>Distance prévue (km)</label><input type="number" id="ev-dist" value="'+(ev?ev.dist:'')+'" placeholder="15" step="0.1"></div></div></div>'
-    +'<div class="fg g2"><div class="field"><label>Titre</label><input type="text" id="ev-titre" value="'+(ev?esc(ev.titre||''):'')+'" placeholder="Ex : Sortie technique..."></div><div class="field"><label>Groupe cible</label><select id="ev-group">'+gopts+'</select></div></div>'
+    +'<div class="fg" style="margin-bottom:14px"><div class="field"><label>Titre</label><input type="text" id="ev-titre" value="'+(ev?esc(ev.titre||''):'')+'" placeholder="Ex : Sortie technique..."></div></div>'
     +'<div class="field" style="margin-bottom:12px"><label>Description / consignes</label><textarea id="ev-desc" placeholder="Objectifs, points d\'attention...">'+( ev?esc(ev.description||''):'')+'</textarea></div>'
     +'<div class="form-section-title" style="margin-top:14px"><span>Étapes</span><div style="display:flex;gap:6px"><button class="btn sm" onclick="addStep()" style="font-size:11px;padding:4px 10px">+ Étape</button></div></div>'
     +'<div id="steps-container" class="steps-list"></div>'
@@ -1609,6 +1613,7 @@ function loadTemplateToCalendar(id){
       renderSteps();
     },100);
   },300);
+}
 function loadTemplatesUI(){
   var el=document.getElementById('templates-list');
   if(!el)return;
@@ -2020,20 +2025,26 @@ async function validateSession(){
   closeValidateModal();
   renderAthleteView();
 }
+function clearOnboardingFields(){
+  ['ob-dob','ob-poids','ob-taille','ob-niveau','ob-discipline','ob-objectif'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var al=document.getElementById('ob-alert');if(al){al.style.display='none';al.textContent='';}
+}
+
 async function saveOnboarding(){
-  var ov=document.getElementById('ob-overlay');
-  var userId=(currentUser&&currentUser.id)||(ov&&ov.dataset.userId);
+  var userId=currentUser&&currentUser.id;
   if(!userId){alert('Erreur: session expirée, reconnectez-vous.');return;}
-  var btn=document.querySelector('#ob-overlay button');
+  var btn=document.getElementById('ob-btn');
   if(btn){btn.disabled=true;btn.innerHTML='Enregistrement...';}
   var dob=document.getElementById('ob-dob').value||null;
   var poids=document.getElementById('ob-poids').value?parseFloat(document.getElementById('ob-poids').value):null;
   var taille=document.getElementById('ob-taille').value?parseFloat(document.getElementById('ob-taille').value):null;
+  var niveau=document.getElementById('ob-niveau').value||null;
+  var discipline=document.getElementById('ob-discipline').value||null;
   var objectif=document.getElementById('ob-objectif').value.trim()||null;
-  var {data:rData,error}=await sb.rpc('update_athlete_fiche',{
+  var {error}=await sb.rpc('update_athlete_fiche',{
     p_user_id:userId,
     p_dob:dob,p_poids:poids,p_taille:taille,
-    p_niveau:'Complété',p_discipline:null,p_objectif:objectif
+    p_niveau:niveau,p_discipline:discipline,p_objectif:objectif
   });
   if(btn){btn.disabled=false;btn.innerHTML='→ Accéder à l\'application';}
   if(error){
@@ -2042,39 +2053,42 @@ async function saveOnboarding(){
     return;
   }
   localStorage.setItem('ob_done_'+userId,'1');
-  if(ov) ov.remove();
-  onboardingShown=false;onboardingActive=false;appInitialized=false;
+  onboardingActive=false;appInitialized=false;
   athletes=[];seances={};
+  clearOnboardingFields();
   await finishInit();
 }
 
 async function skipOnboarding(){
-  var ov=document.getElementById('ob-overlay');
-  var userId=(currentUser&&currentUser.id)||(ov&&ov.dataset.userId);
-  if(userId){
-    localStorage.setItem('ob_done_'+userId,'1');
-    await sb.rpc('update_athlete_fiche',{
-      p_user_id:userId,p_niveau:'Complété',
-      p_dob:null,p_poids:null,p_taille:null,p_discipline:null,p_objectif:null
-    });
-  }
-  var ov=document.getElementById('ob-overlay');
-  if(ov) ov.remove();
-  onboardingActive=false;
-  appInitialized=false;
+  var userId=currentUser&&currentUser.id;
+  if(userId) localStorage.setItem('ob_done_'+userId,'1');
+  onboardingActive=false;appInitialized=false;
+  clearOnboardingFields();
   await finishInit();
 }
 
 async function finishInit(){
   if(onboardingActive) return; // Ne pas lancer l'app pendant l'onboarding
   appInitializing=false;
+  await loadData();
+  // Athlète : proposer la complétion de fiche à la première connexion (tant qu'elle n'a pas de niveau renseigné)
+  if(currentProfile.role==='athlete'){
+    var a=athletes[0];
+    var doneLocally=currentUser&&localStorage.getItem('ob_done_'+currentUser.id);
+    if(a&&!a.niveau&&!doneLocally){
+      onboardingActive=true;
+      document.getElementById('app').style.display='none';
+      document.getElementById('login-page').style.display='none';
+      document.getElementById('onboarding-page').style.display='block';
+      return;
+    }
+  }
   appInitialized=true;
   document.getElementById('app').style.display='block';
   document.getElementById('login-page').style.display='none';
   document.getElementById('onboarding-page').style.display='none';
   updateNavUser();
   buildNavTabs();
-  await loadData();
   switchTab(currentProfile.role==='athlete'?'athlete':currentProfile.role==='admin'?'admin':'coach');
 }
 
