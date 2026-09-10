@@ -793,6 +793,9 @@ var STEP_COLORS={'Échauffement':'echauffement','Travail principal':'travail','R
 
 /* ── UTILS ── */
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Safari iOS (mode privé, cookies bloqués, profils restreints...) peut faire planter localStorage : on encapsule pour ne jamais bloquer l'app
+function safeLocalGet(key){try{return localStorage.getItem(key);}catch(e){return null;}}
+function safeLocalSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
 function todayISO(){return new Date().toISOString().split('T')[0];}
 function fmtDate(d){if(!d)return'—';var p=String(d).split('T')[0].split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 function inits(p,n){return((p||'')[0]+(n||'')[0]).toUpperCase();}
@@ -2052,7 +2055,7 @@ async function saveOnboarding(){
     if(al){al.style.display='block';al.textContent=error.message;}
     return;
   }
-  localStorage.setItem('ob_done_'+userId,'1');
+  safeLocalSet('ob_done_'+userId,'1');
   onboardingActive=false;appInitialized=false;
   athletes=[];seances={};
   clearOnboardingFields();
@@ -2061,7 +2064,7 @@ async function saveOnboarding(){
 
 async function skipOnboarding(){
   var userId=currentUser&&currentUser.id;
-  if(userId) localStorage.setItem('ob_done_'+userId,'1');
+  if(userId) safeLocalSet('ob_done_'+userId,'1');
   onboardingActive=false;appInitialized=false;
   clearOnboardingFields();
   await finishInit();
@@ -2070,26 +2073,35 @@ async function skipOnboarding(){
 async function finishInit(){
   if(onboardingActive) return; // Ne pas lancer l'app pendant l'onboarding
   appInitializing=false;
-  await loadData();
-  // Athlète : proposer la complétion de fiche à la première connexion (tant qu'elle n'a pas de niveau renseigné)
-  if(currentProfile.role==='athlete'){
-    var a=athletes[0];
-    var doneLocally=currentUser&&localStorage.getItem('ob_done_'+currentUser.id);
-    if(a&&!a.niveau&&!doneLocally){
-      onboardingActive=true;
-      document.getElementById('app').style.display='none';
-      document.getElementById('login-page').style.display='none';
-      document.getElementById('onboarding-page').style.display='block';
-      return;
+  try{
+    await loadData();
+    // Athlète : proposer la complétion de fiche à la première connexion (tant qu'elle n'a pas de niveau renseigné)
+    if(currentProfile.role==='athlete'){
+      var a=athletes[0];
+      var doneLocally=currentUser&&safeLocalGet('ob_done_'+currentUser.id);
+      if(a&&!a.niveau&&!doneLocally){
+        onboardingActive=true;
+        document.getElementById('app').style.display='none';
+        document.getElementById('login-page').style.display='none';
+        document.getElementById('onboarding-page').style.display='block';
+        return;
+      }
     }
+    appInitialized=true;
+    document.getElementById('app').style.display='block';
+    document.getElementById('login-page').style.display='none';
+    document.getElementById('onboarding-page').style.display='none';
+    updateNavUser();
+    buildNavTabs();
+    switchTab(currentProfile.role==='athlete'?'athlete':currentProfile.role==='admin'?'admin':'coach');
+  }catch(e){
+    // Filet de sécurité : ne jamais laisser un écran blanc si quelque chose d'imprévu échoue ici
+    appInitializing=false;appInitialized=false;onboardingActive=false;
+    document.getElementById('app').style.display='none';
+    document.getElementById('onboarding-page').style.display='none';
+    document.getElementById('login-page').style.display='flex';
+    showAlert('login-alert','Une erreur est survenue au chargement : '+(e&&e.message?e.message:e)+'. Merci de réessayer.','error',8000);
   }
-  appInitialized=true;
-  document.getElementById('app').style.display='block';
-  document.getElementById('login-page').style.display='none';
-  document.getElementById('onboarding-page').style.display='none';
-  updateNavUser();
-  buildNavTabs();
-  switchTab(currentProfile.role==='athlete'?'athlete':currentProfile.role==='admin'?'admin':'coach');
 }
 
 /* ── INVITATION ── */
