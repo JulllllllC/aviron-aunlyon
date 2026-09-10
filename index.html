@@ -2147,12 +2147,10 @@ async function doSetPassword(){
   var {error}=await sb.auth.updateUser({password:pw});
   btn.disabled=false;btn.innerHTML='→ Activer mon compte';
   if(error){showAlert('rp-alert',error.message,'error');return;}
-  // Mettre à jour le profil avec rôle athlète
-  if(currentUser){
-    await sb.from('profiles').update({role:'athlete'}).eq('id',currentUser.id);
-  }
   document.getElementById('reset-page').style.display='none';
-  showAlert('admin-alert','Mot de passe activé avec succès !','success');
+  // Lancer réellement l'application maintenant que le mot de passe est défini
+  appInitializing=false;appInitialized=false;
+  await initApp(currentUser);
 }
 
 function showResetPage(){
