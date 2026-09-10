@@ -869,47 +869,56 @@ async function initApp(user){
   if(appInitializing||appInitialized) return;
   appInitializing=true;
   currentUser=user;
-  var profile=null;
-  for(var i=0;i<3;i++){
-    var {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
-    if(p){profile=p;break;}
-    await new Promise(function(r){setTimeout(r,800);});
-  }
-  if(!profile){
-    // Créer le profil seulement s'il n'existe vraiment pas
-    var meta=user.user_metadata||{};
-    var {data:np,error:ne}=await sb.from('profiles').insert({
-      id:user.id,email:user.email,
-      prenom:meta.prenom||'',
-      nom:meta.nom||'',
-      role:'athlete'
-    }).select().single();
-    if(ne){
-      // Le profil existe peut-être déjà malgré l'erreur — réessayer
-      var {data:rp}=await sb.from('profiles').select('*').eq('id',user.id).single();
-      profile=rp;
-    } else {
-      profile=np;
+  try{
+    var profile=null;
+    for(var i=0;i<3;i++){
+      var {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
+      if(p){profile=p;break;}
+      await new Promise(function(r){setTimeout(r,800);});
     }
-  }
-  if(!profile){alert('Erreur : profil introuvable.');return;}
-  currentProfile=profile;
-  // Sauvegarder l'utilisateur courant immédiatement
-  currentUser=user;
+    if(!profile){
+      // Créer le profil seulement s'il n'existe vraiment pas
+      var meta=user.user_metadata||{};
+      var {data:np,error:ne}=await sb.from('profiles').insert({
+        id:user.id,email:user.email,
+        prenom:meta.prenom||'',
+        nom:meta.nom||'',
+        role:'athlete'
+      }).select().single();
+      if(ne){
+        // Le profil existe peut-être déjà malgré l'erreur — réessayer
+        var {data:rp}=await sb.from('profiles').select('*').eq('id',user.id).single();
+        profile=rp;
+      } else {
+        profile=np;
+      }
+    }
+    if(!profile){throw new Error('Profil introuvable après plusieurs tentatives.');}
+    currentProfile=profile;
+    // Sauvegarder l'utilisateur courant immédiatement
+    currentUser=user;
 
-  // Pour les athlètes : créer la fiche si elle n'existe pas
-  if(currentProfile.role==='athlete'){
-    var meta=user.user_metadata||{};
-    await sb.rpc('create_athlete_fiche',{
-      p_user_id:user.id,
-      p_prenom:currentProfile.prenom||meta.prenom||'',
-      p_nom:currentProfile.nom||meta.nom||'',
-      p_dob:null,p_poids:null,p_taille:null,p_niveau:null,p_discipline:null
-    });
-  }
+    // Pour les athlètes : créer la fiche si elle n'existe pas
+    if(currentProfile.role==='athlete'){
+      var meta2=user.user_metadata||{};
+      await sb.rpc('create_athlete_fiche',{
+        p_user_id:user.id,
+        p_prenom:currentProfile.prenom||meta2.prenom||'',
+        p_nom:currentProfile.nom||meta2.nom||'',
+        p_dob:null,p_poids:null,p_taille:null,p_niveau:null,p_discipline:null
+      });
+    }
 
-  document.getElementById('login-page').style.display='none';
-  await finishInit();
+    document.getElementById('login-page').style.display='none';
+    await finishInit();
+  }catch(e){
+    // Filet de sécurité : ne jamais laisser un écran blanc si quelque chose échoue au démarrage
+    appInitializing=false;appInitialized=false;
+    document.getElementById('app').style.display='none';
+    document.getElementById('onboarding-page').style.display='none';
+    document.getElementById('login-page').style.display='flex';
+    showAlert('login-alert','Erreur de chargement : '+(e&&e.message?e.message:e)+'. Merci de réessayer.','error',10000);
+  }
 }
 
 function updateNavUser(){
